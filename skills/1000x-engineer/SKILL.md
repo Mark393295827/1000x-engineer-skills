@@ -111,6 +111,18 @@ When assigned any complex engineering task, strictly execute the **5-Step SOP**:
 
 ---
 
+## Maximizing Potential & Playbook Scenarios
+
+To achieve the full 1000x multiplier, study the in-depth [Maximizing Potential & Scenarios Guide](./references/maximizing-potential-and-scenarios.md):
+
+- **The Multiplier Formula**: Leverage = (Spec Density × Harness Rigor × Agent Concurrency) / Orchestration Tax.
+- **Scenario A (Monolith-to-Microservices)**: Parallel extraction of 100k+ LOC legacy modules using MECE boundary contracts.
+- **Scenario B (Boil the Ocean)**: Full-stack zero-to-one delivery (DB, Backend, Frontend, E2E tests) executed concurrently in hours.
+- **Scenario C (Complex Concurrency & Deadlocks)**: Fuzzing stress-harnesses and self-healing fixes distilled into permanent skills.
+- **Scenario D (Strict Security Hardening)**: Automated AST analysis, CVE eradication, and zero-trust audit receipts.
+
+---
+
 ## Anti-Patterns to Strictly Avoid
 
 1. ❌ **Vibe Coding without Evals**: Allowing agents to generate code without automated tests or formal verification.
