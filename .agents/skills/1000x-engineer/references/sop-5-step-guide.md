@@ -4,7 +4,7 @@ This guide provides operational details, checklists, and execution commands for 
 
 ---
 
-## Step 1: Forward Deploy & Trace Capture (前线探查与痛点捕获)
+## Step 1: Forward Deploy & Trace Capture
 
 ### Purpose
 Ground the autonomous factory in reality. Avoid hallucinations and misaligned solutions by obtaining direct empirical evidence from system logs, real payloads, and environment configurations.
@@ -29,7 +29,7 @@ pytest -v -k "failing_test" --tb=short
 
 ---
 
-## Step 2: Write Skills as Code & Semantic Contracts (契约固化)
+## Step 2: Write Skills as Code & Semantic Contracts
 
 ### Purpose
 Elevate human-AI collaboration from line-by-line syntax hand-holding to high-density strategic contracts. Define what "correct" means before touching business logic.
@@ -44,7 +44,7 @@ A robust Skill as Code specification must include:
 
 ---
 
-## Step 3: Build Evals & Deterministic Test Harness First (搭建断言防线)
+## Step 3: Build Evals & Deterministic Test Harness First
 
 ### Purpose
 Establish an automated, tamper-proof quality firewall. In an autonomous software factory, tests are not written post-hoc; they are the factory's primary grading machinery.
@@ -65,7 +65,7 @@ Establish an automated, tamper-proof quality firewall. In an autonomous software
 
 ---
 
-## Step 4: Launch Autonomous Loops & Subagent Routing (发射自主闭环)
+## Step 4: Launch Autonomous Loops & Subagent Routing
 
 ### The Autonomous Loop Lifecycle
 ```text
@@ -89,7 +89,7 @@ When tackling massive tasks (e.g., refactoring an entire microservice system):
 
 ---
 
-## Step 5: Audit Receipts, Not Code & Skillify Flywheel (审查收据与技能复利)
+## Step 5: Audit Receipts, Not Code & Skillify Flywheel
 
 ### Audit Receipts
 - Human engineers review the machine-certified **Run Receipt** (`RUN_RECEIPT.md`), covering:

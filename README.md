@@ -20,7 +20,7 @@ This repository implements the **1000x Engineer & Autonomous Software Factory** 
 
 ```text
 .
-├── 1000x工程师.md                     # Core theoretical document & specification
+├── 1000x-engineer.md                  # Core theoretical document & specification
 ├── .gitignore                         # Standard git ignore rules
 ├── README.md                          # Repository documentation & usage playbook
 ├── .agents/

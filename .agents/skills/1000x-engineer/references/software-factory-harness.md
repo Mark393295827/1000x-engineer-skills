@@ -27,7 +27,7 @@ Autonomous software factories use programmatic graders to evaluate whether a tas
 
 ---
 
-## 3. Run Receipts (不可篡改执行收据)
+## 3. Run Receipts (Immutable Execution Receipts)
 
 ### What is a Run Receipt?
 A **Run Receipt** is a cryptographically or deterministically structured document produced after a complete verification run. It certifies that the autonomous changes satisfy all criteria without human inspection of every diff line.

@@ -54,12 +54,12 @@ flowchart TD
 
 When assigned any complex engineering task, strictly execute the **5-Step SOP**:
 
-### Step 1: Forward Deploy & Trace Capture (前线探查与痛点捕获)
+### Step 1: Forward Deploy & Trace Capture
 - Do not make blind assumptions. Investigate the live environment, real data inputs, error traces, and system boundaries first.
 - Capture baseline metrics, existing failure logs, edge cases, and environment constraints.
 - See detailed procedure in [SOP Step 1 Guide](./references/sop-5-step-guide.md#step-1-forward-deploy--trace-capture).
 
-### Step 2: Write Skills as Code & Semantic Contracts (契约固化)
+### Step 2: Write Skills as Code & Semantic Contracts
 - Define high-density Markdown contracts specifying:
   1. **Strict Input/Output Schemas** and data formats.
   2. **Invariants & Non-Negotiables** (e.g., zero regression, strict typing, security guardrails).
@@ -67,7 +67,7 @@ When assigned any complex engineering task, strictly execute the **5-Step SOP**:
   4. **MECE Boundaries** (Mutually Exclusive, Collectively Exhaustive interface segregation).
 - Template: [Skill Contract Template](./resources/skill-contract-template.md).
 
-### Step 3: Build Evals & Deterministic Test Harness First (搭建断言防线)
+### Step 3: Build Evals & Deterministic Test Harness First
 - **Zero code generation before test harness setup.**
 - Write comprehensive test suites before modifying or implementing production code:
   - Unit tests for core domain logic.
@@ -77,7 +77,7 @@ When assigned any complex engineering task, strictly execute the **5-Step SOP**:
 - Define unambiguous **Definition of Done (DoD)** with automated grading criteria.
 - Template: [Eval Harness Template](./resources/eval-harness-template.md).
 
-### Step 4: Launch Autonomous Closed Loops & Subagent Routing (发射自主闭环)
+### Step 4: Launch Autonomous Closed Loops & Subagent Routing
 - Execute the closed self-healing loop: `Trigger -> Execute -> Verify -> Commit`.
 - Apply **Adaptive Compute & Model Routing**:
   - **Flash / Lite Models**: Route low-complexity tasks (boilerplate generation, docstring creation, data conversion, formatting).
@@ -87,7 +87,7 @@ When assigned any complex engineering task, strictly execute the **5-Step SOP**:
   - Concurrently dispatch specialized subagents to tackle database layer, API routes, frontend UI, and test suites in parallel.
   - See [Model Routing & Topology Matrix](./references/model-routing-matrix.md).
 
-### Step 5: Audit Receipts, Not Code (审查收据而非代码) & Skillify Flywheel
+### Step 5: Audit Receipts, Not Code & Skillify Flywheel
 - **Stop manual line-by-line reading**: Audit the machine-generated **Run Receipt** (`RUN_RECEIPT.md`):
   - 100% test pass rate.
   - Linter & type check zero-error status.
