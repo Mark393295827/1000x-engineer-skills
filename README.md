@@ -1,6 +1,9 @@
 # 1000x Engineer: Autonomous Software Factory & Skills
 
-> Autonomous Software Factory Commander and Constraint Architect repository for AI-engineering tasks.
+![1000x Engineer Command Center](promo/assets/banner.jpg)
+
+> **Autonomous Software Factory Commander and Constraint Architect repository for AI-engineering tasks.**  
+> 🎬 **Interactive Promotional Animation**: Open [`promo/index.html`](promo/index.html) in your browser to experience the interactive presentation.
 
 ---
 
