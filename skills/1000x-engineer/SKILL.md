@@ -10,7 +10,14 @@ description: >-
 
 # 1000x Engineer: Autonomous Software Factory Protocol
 
-> **Core Thesis:** The 1000x Engineer operates as the **Commander and Harness Architect** of an Autonomous Software Factory. Instead of manually writing and line-by-line debugging code, you write high-density Markdown skill contracts (Skills as Code), enforce deterministic test harnesses (Evals First), orchestrate multi-agent parallel loops ("Boil the Ocean"), audit immutable Run Receipts, and distill execution traces into compounding skills.
+> **Core Thesis:** The 1000x Engineer operates as the **Commander and Harness Architect** of an Autonomous Software Factory. Instead of manually writing and line-by-line debugging code, you write high-density Markdown skill contracts (Skills as Code), enforce deterministic test harnesses (Evals First), orchestrate multi-agent parallel loops ("Boil the Ocean"), audit structured Run Receipts, and distill reusable execution patterns into compounding skills.
+
+---
+
+## User Documentation
+
+- Start with the [User Manual](./references/user-manual.md) for activation, first-run instructions, utility commands, evidence boundaries, and troubleshooting.
+- Use [Unlocking the Full Potential](./references/maximizing-potential-and-scenarios.md) for readiness scoring, maturity levels, advanced orchestration, metrics, and scenario playbooks.
 
 ---
 
@@ -36,7 +43,7 @@ flowchart TD
 
     subgraph Layer3 ["3. Sandbox Isolation & Verification"]
         T["Multi-dimensional Tests (Unit, Integration, Property, E2E)"]
-        Rec["Immutable Run Receipt (100% Pass Assertion)"]
+        Rec["Run Receipt (Declared Grader Evidence)"]
         S1 & S2 & S3 --> T --> Rec
     end
 
@@ -68,8 +75,8 @@ When assigned any complex engineering task, strictly execute the **5-Step SOP**:
 - Template: [Skill Contract Template](./resources/skill-contract-template.md).
 
 ### Step 3: Build Evals & Deterministic Test Harness First
-- **Zero code generation before test harness setup.**
-- Write comprehensive test suites before modifying or implementing production code:
+- **No mergeable production implementation before an adequate test harness.** Throwaway probes may be used to characterize unknown behavior but do not satisfy the final eval gate.
+- Write comprehensive test suites before modifying or implementing mergeable production code:
   - Unit tests for core domain logic.
   - Property-based tests for boundary values.
   - Integration/E2E test harness running in sandboxed isolation.
@@ -78,7 +85,7 @@ When assigned any complex engineering task, strictly execute the **5-Step SOP**:
 - Template: [Eval Harness Template](./resources/eval-harness-template.md).
 
 ### Step 4: Launch Autonomous Closed Loops & Subagent Routing
-- Execute the closed self-healing loop: `Trigger -> Execute -> Verify -> Commit`.
+- Execute the closed self-healing loop: `Trigger -> Execute -> Verify -> Accept / Commit if authorized`.
 - Apply **Adaptive Compute & Model Routing**:
   - **Flash / Lite Models**: Route low-complexity tasks (boilerplate generation, docstring creation, data conversion, formatting).
   - **Thinking / Pro Models**: Route architectural design, core concurrency, algorithmic deduction, and complex refactors.
@@ -87,14 +94,15 @@ When assigned any complex engineering task, strictly execute the **5-Step SOP**:
   - Concurrently dispatch specialized subagents to tackle database layer, API routes, frontend UI, and test suites in parallel.
   - See [Model Routing & Topology Matrix](./references/model-routing-matrix.md).
 
-### Step 5: Audit Receipts, Not Code & Skillify Flywheel
-- **Stop manual line-by-line reading**: Audit the machine-generated **Run Receipt** (`RUN_RECEIPT.md`):
+### Step 5: Audit Receipts & Skillify Flywheel
+- Audit the machine-generated **Run Receipt** (`RUN_RECEIPT.md`) together with the relevant diff and risk review. Confirm that it covers the required:
   - 100% test pass rate.
   - Linter & type check zero-error status.
-  - Performance and resource usage benchmarks.
+  - Performance and resource usage benchmarks when required by the contract or risk.
+- Scope claims to the graders that actually ran. The bundled receipt is an editable evidence summary, not cryptographic proof or a substitute for required security, compliance, merge, or deployment review.
 - **Skillify Flywheel**:
   - If unexpected errors occurred and were solved during the loop, extract the execution trace.
-  - Convert lessons learned into an updated `SKILL.md` or new skill package to permanently eliminate recurrence.
+  - Convert lessons learned into an updated `SKILL.md` or new skill package with a regression eval to reduce recurrence.
   - Use [Skillify Flywheel Guide](./references/skillify-flywheel.md) and [Receipt Template](./resources/run-receipt-template.md).
 
 ---
@@ -106,8 +114,8 @@ When assigned any complex engineering task, strictly execute the **5-Step SOP**:
 | **Harness Setup** | `write_to_file` -> `tests/*` | Establish automated eval gates |
 | **Parallel Orchestration** | `invoke_subagent` | Parallel subagent execution across layers |
 | **Deterministic Verification**| `run_command` (pytest / npm test / cargo test) | Run sandboxed multi-dimensional tests |
-| **Receipt Generation** | `python scripts/generate_run_receipt.py` | Generate verified, reproducible Run Receipt |
-| **Skill Distillation** | `python scripts/extract_skill_trace.py` | Distill execution traces into reusable skill contracts |
+| **Receipt Generation** | `python <skill-dir>/scripts/generate_run_receipt.py` | Summarize declared grader results in a Run Receipt; run from the target repository root |
+| **Skill Distillation** | `python <skill-dir>/scripts/extract_skill_trace.py` | Scaffold a reusable skill from distilled problem and solution fields |
 
 ---
 

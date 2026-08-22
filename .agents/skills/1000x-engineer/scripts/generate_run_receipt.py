@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Generate Run Receipt for 1000x Engineer / Autonomous Software Factory.
-Runs specified commands (e.g. tests, linters, type checks) and compiles an immutable RUN_RECEIPT.md.
+Generate a Run Receipt for 1000x Engineer / Autonomous Software Factory.
+Runs specified commands (e.g. tests, linters, type checks) and compiles an editable grader-evidence summary.
 """
 
 import sys
@@ -49,7 +49,7 @@ def get_git_commit() -> str:
     return "uncommitted / no-git"
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate an immutable Run Receipt.")
+    parser = argparse.ArgumentParser(description="Generate a Run Receipt grader-evidence summary.")
     parser.add_argument("--spec", default="Autonomous Engineering Contract", help="Spec or contract name")
     parser.add_argument("--scope", default="Workspace", help="Scope of the task")
     parser.add_argument("--output", default="RUN_RECEIPT.md", help="Output path for the receipt")
@@ -75,7 +75,7 @@ def main():
     now_str = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     commit_sha = get_git_commit()
     
-    status_label = "✅ PASS (100%)" if all_passed else "❌ FAIL"
+    status_label = "✅ PASS (ALL EXECUTED GRADERS)" if all_passed else "❌ FAIL"
     
     lines = [
         "# Autonomous Software Factory: Run Receipt",
@@ -130,9 +130,9 @@ def main():
     lines.extend([
         "---",
         "",
-        "## 4. Certification",
+        "## 4. Execution Summary",
         "",
-        f"> **Receipt Integrity:** Graders evaluated. Factory Status: **{status_label}**."
+        f"> **Executed Grader Status:** **{status_label}**. Review scope, complete logs, omitted checks, and residual risks separately."
     ])
     
     receipt_content = "\n".join(lines) + "\n"

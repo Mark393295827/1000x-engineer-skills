@@ -1,7 +1,7 @@
 # Autonomous Software Factory: Run Receipt
 
 **Receipt ID:** `receipt-[UUID]`
-**Status:** `PASS (100%)`
+**Status:** `PASS (ALL DECLARED GRADERS)`
 **Timestamp:** `[YYYY-MM-DD HH:MM:SS UTC]`
 **Executor:** `Autonomous Software Factory / 1000x Engineer`
 **Git Commit:** `[SHA]`
@@ -36,6 +36,6 @@
 
 ---
 
-## 4. Verification Assertion
+## 4. Verification Summary
 
-> **Certification:** All deterministic checks passed with 100% success in an isolated sandbox environment. No human line-by-line review required for standard operational merge.
+> **Evidence statement:** The declared checks passed in the recorded environment. This receipt supports risk-based review; it is not cryptographic proof, compliance certification, merge authorization, or a substitute for required human review.

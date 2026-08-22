@@ -86,7 +86,7 @@ flowchart TD
 
     subgraph Layer3 ["3. Sandbox Isolation & Verification"]
         T["Multi-dimensional Tests (Unit, Integration, Property, E2E)"]
-        Rec["Immutable Run Receipt (100% Pass Assertion)"]
+        Rec["Run Receipt (Declared Grader Evidence)"]
         S1 & S2 & S3 --> T --> Rec
     end
 
@@ -124,7 +124,7 @@ flowchart TD
 | **Underlying Assumption** | Human brain is the sole code generator and reviewer | AI is a code completion assistant; human drives line-by-line | Agent swarms are software workers; human is factory architect and judge |
 | **Core Activity** | Keyboard typing, syntax lookups, environment config, local debug | Tab code completion, interactive chat prompt queries | Authoring Markdown specs, configuring Eval pipelines, running autonomous loops |
 | **Leverage Source** | Personal syntax memory, IDE hotkeys, algorithmic knowledge | Block-level generation, SaaS boilerplate libraries | Multi-surface agent orchestration (Antigravity/Codex), Run Receipts, Skillify flywheel |
-| **Quality Assurance** | Manual visual code reviews (prone to subtle logical bugs) | Human reading AI snippet diffs (high cognitive fatigue) | **100% deterministic test assertions, sandbox mutation testing, immutable Run Receipts** |
+| **Quality Assurance** | Manual visual code reviews (prone to subtle logical bugs) | Human reading AI snippet diffs (high cognitive fatigue) | **Risk-matched deterministic checks, host-provided isolation, reviewed Run Receipts, and human approval where required** |
 | **Physical Bottleneck** | ⚠️ Finger typing speed & mental working memory (8h/day) | ⚠️ Prompt fatigue & context window overflow | ⚠️ Orchestration Tax (human capacity to review system-level specs) |
 
 ---
@@ -142,7 +142,7 @@ flowchart TD
 1. **Forward Deploy & Trace Capture:** Directly engage with live production workflows and error logs to extract real execution traces and boundary constraints. (Source: [[sources/2026-08/2026-08-11-stanford-cs153-ai-native-company#^cs153-forward-deploy]])
 2. **Write Skills as Code:** Distill domain rules into structured Markdown contracts with strict schemas, invariants, and deterministic DoD criteria.
 3. **Build Evals First:** Write comprehensive unit, property-based, and sandboxed integration suites before generating implementation code.
-4. **Launch Autonomous Loop:** Trigger the closed `Trigger -> Execute -> Verify -> Commit` loop, enabling agents to self-heal in sandbox until 100% pass rate is attained.
+4. **Launch Autonomous Loop:** Trigger the closed `Trigger -> Execute -> Verify -> Accept / Commit if authorized` loop, enabling bounded repair in host-provided isolation when available until the declared graders pass.
 5. **Audit Receipts, Not Code:** Review machine-generated Run Receipts, execution telemetry, and architectural boundaries; turn every anomaly into a regression test case.
 
 ---

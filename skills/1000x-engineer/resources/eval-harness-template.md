@@ -8,17 +8,17 @@
 
 ## 1. Definition of Done (DoD) Checklist
 
-All checkboxes must evaluate to TRUE before changes can be merged or finalized:
+Customize this checklist to the contract and risk. Every retained required gate must evaluate to TRUE before an authorized merge or finalization:
 
-- [ ] **Unit Tests**: 100% pass on all unit tests (`pytest` / `npm test`).
-- [ ] **Boundary / Property Evals**: Edge cases fuzz-tested with 0 regressions.
-- [ ] **Static Type Analysis**: 0 errors with `mypy --strict` / `tsc --noEmit`.
-- [ ] **Linter & Formatting**: 0 warnings with `ruff check` / `eslint`.
-- [ ] **Run Receipt Produced**: Machine-verifiable `RUN_RECEIPT.md` generated.
+- [ ] **Required Tests**: Declared unit and integration graders pass; any pre-existing failures are unchanged, documented, and reflected in a narrowed claim.
+- [ ] **Boundary / Property Evals**: Relevant edge cases are exercised with no task-attributable regression.
+- [ ] **Static Type Analysis**: Required type gates (`mypy --strict` / `tsc --noEmit`) report no task-attributable errors.
+- [ ] **Linter & Formatting**: Required quality gates (`ruff check` / `eslint`) report no task-attributable violations.
+- [ ] **Run Receipt Reviewed**: `RUN_RECEIPT.md` and complete logs were reviewed against the contract, omitted checks, and residual risks.
 
 ---
 
-## 2. Automated Test Commands
+## 2. Example Automated Test Commands
 
 ```bash
 # Unit & Integration tests
@@ -30,6 +30,8 @@ mypy src/ --strict
 # Linter
 ruff check src/ tests/
 ```
+
+Replace these examples with the repository's native, required commands.
 
 ---
 

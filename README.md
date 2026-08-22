@@ -11,11 +11,20 @@
 
 This repository implements the **1000x Engineer & Autonomous Software Factory** paradigm. It equips AI engineering workflows with:
 
-1. **Skills as Code**: Machine-executable Markdown contracts defining typed schemas, invariants, and MECE boundaries.
+1. **Skills as Code**: Agent-consumable Markdown contracts defining typed schemas, invariants, and MECE boundaries for compatible hosts.
 2. **Evals First**: Strict test harnesses and Definition of Done (DoD) assertion gates prior to code modification.
-3. **Autonomous Loops**: Closed-loop execution (`Trigger -> Execute -> Verify -> Commit`) with sandboxed self-healing.
+3. **Autonomous Loops**: Closed-loop execution (`Trigger -> Execute -> Verify -> Accept / Commit if authorized`) with host-provided isolation when available.
 4. **Adaptive Compute Routing**: Dynamic allocation of subagent models (Flash/Lite for syntax & boilerplate, Thinking/Pro for complex architecture).
-5. **Run Receipts & Skillify**: Machine-certified immutable verification receipts (`RUN_RECEIPT.md`) and automatic distillation of failure traces into reusable skills.
+5. **Run Receipts & Skillify**: Structured verification summaries (`RUN_RECEIPT.md`) and guided distillation of reusable failure patterns into skills.
+
+---
+
+## Documentation
+
+- **[User Manual](skills/1000x-engineer/references/user-manual.md):** Installation, activation, first run, command reference, receipt limitations, and troubleshooting.
+- **[Unlock the Full Potential](skills/1000x-engineer/references/maximizing-potential-and-scenarios.md):** Readiness and maturity models, multi-agent topology, routing, metrics, adoption plan, and advanced prompt kit.
+
+The documentation treats “1000x” as a leverage target rather than a guaranteed multiplier and keeps merge, deployment, security, and compliance decisions under risk-appropriate human control.
 
 ---
 
@@ -31,6 +40,7 @@ This repository implements the **1000x Engineer & Autonomous Software Factory** 
 │       └── 1000x-engineer/            # Antigravity skill package
 │           ├── SKILL.md               # Main 5-Step SOP entry point
 │           ├── references/            # Deep-dive guides & architectural manuals
+│           │   ├── user-manual.md
 │           │   ├── sop-5-step-guide.md
 │           │   ├── software-factory-harness.md
 │           │   ├── model-routing-matrix.md
@@ -57,13 +67,13 @@ $$\text{Engineering Output} = \frac{\text{Specification Density} \times \text{Ha
 
 ### 5 Core Pillars for 1000x Leverage
 
-1. **Cease Line-by-Line Micromanagement**: Transition 80% of your initial engineering effort into defining typed schema contracts and automated test gates. Let agents write 100% of the implementation syntax.
-2. **Deterministic Quality Gates (Zero Review Fatigue)**: Never waste cognitive bandwidth reading thousands of lines of generated code. Audit machine-certified **Run Receipts** (`RUN_RECEIPT.md`) that verify 100% test pass rates and zero linter warnings.
+1. **Shift Effort Upstream**: Invest the initial engineering effort in typed schema contracts, explicit invariants, and automated test gates so implementation can be delegated safely.
+2. **Deterministic Quality Gates**: Use **Run Receipts** (`RUN_RECEIPT.md`) to summarize grader evidence, then apply diff and risk review in proportion to the change.
 3. **Partition with MECE Boundaries**: Eliminate agent coordination overhead ("Orchestration Tax") by ensuring subagents work across decoupled, non-overlapping architectural layers.
 4. **Adaptive Model Tier Routing**:
    - **Flash / Lite Models**: Route low-complexity boilerplate, docstrings, schema conversions, and localized refactors.
    - **Thinking / Pro Models**: Route architectural interface design, distributed concurrency, and multi-layer root-cause analysis.
-5. **The Compounding Skillify Flywheel**: Every non-trivial bug solved in the loop must be extracted into a permanent skill contract and added to the regression test suite.
+5. **The Compounding Skillify Flywheel**: Convert genuinely reusable failure patterns, tooling quirks, architecture patterns, and domain invariants into reviewed skill contracts with regression evals.
 
 ---
 
@@ -76,7 +86,7 @@ Invoke the skill when assigning complex engineering objectives:
 ```
 
 ### Step 2: Contract Specification
-Author or generate a contract using the template in `resources/skill-contract-template.md`:
+Author or generate a contract using the template in `skills/1000x-engineer/resources/skill-contract-template.md`:
 - Specify typed request/response schemas.
 - Declare non-negotiable invariants (e.g., zero database locks > 50ms).
 - Enforce negative constraints (e.g., no plaintext card numbers in logs).
@@ -91,12 +101,12 @@ ruff check src/
 ```
 
 ### Step 4: Autonomous Closed-Loop Execution
-Launch the `Trigger -> Execute -> Verify -> Commit` loop:
-- Agents apply edits in isolated sandboxes.
-- Failures trigger auto-diagnosis where only the relevant stack trace and failing test are fed back to the fixer agent.
+Launch the `Trigger -> Execute -> Verify -> Accept / Commit if authorized` loop:
+- Use host-provided sandboxes or isolated worktrees when available; otherwise enforce explicit write boundaries and preserve pre-existing changes.
+- When the host supports agent loops, feed the relevant failing assertion, trace, and code context to a bounded fixer loop; stop on repeated signatures or missing authority.
 
 ### Step 5: Issue Run Receipt & Skillify
-Generate an immutable verification receipt:
+Generate a structured verification summary. The helper reruns the supplied commands and writes editable Markdown; review the [manual’s evidence boundaries](skills/1000x-engineer/references/user-manual.md#7-what-a-passing-receipt-proves):
 ```bash
 python skills/1000x-engineer/scripts/generate_run_receipt.py \
   --spec "Multi-Currency-Webhooks" \
@@ -105,39 +115,39 @@ python skills/1000x-engineer/scripts/generate_run_receipt.py \
   --test-cmd "Type Check::mypy --strict src/payments" \
   --test-cmd "Linter::ruff check src/payments"
 ```
-If novel failure patterns were solved during the task, capture them into a reusable skill:
+If a genuinely reusable failure pattern was solved, scaffold a candidate skill, then add its regression eval and trigger tests:
 ```bash
 python skills/1000x-engineer/scripts/extract_skill_trace.py \
   --name "fix-webhook-idempotency-race" \
   --desc "Use when handling concurrent duplicate webhook deliveries in distributed queue workers." \
   --problem "Duplicate webhooks processed simultaneously before DB transaction committed" \
   --root-cause "Missing Redis distributed lock before DB query" \
-  --solution "1. Acquire Redis lock with TTL`n2. Query DB status`n3. Release lock in finally block"
+  --solution "Acquire a bounded lock with TTL; re-read status; release in finally; run the concurrency regression test"
 ```
 
 ---
 
 ## Real-World Playbook Scenarios
 
-### 1. Legacy Monolith Decomposition (100k+ LOC)
+### 1. Legacy Monolith Decomposition
 - **Problem**: Monolithic codebase with tangled dependencies needs 3 core domains extracted into independent microservices.
-- **1000x Execution**: Commander sets boundary contracts and spawns parallel subagents (DB Migration Agent, Domain Logic Agent, API Gateway Agent). All agents work concurrently against mock interfaces with zero collisions, verified by end-to-end integration tests.
+- **1000x Execution**: The commander first stabilizes service contracts and characterization tests, then assigns non-overlapping migration, domain, and gateway work with serial integration and end-to-end verification.
 
 ### 2. "Boil the Ocean" Full-Stack Product Delivery
-- **Problem**: Deliver an end-to-end analytics platform with Postgres DB, FastAPI backend, React dashboard, and full CI/CD in 24 hours.
-- **1000x Execution**: Subagents simultaneously construct the database migrations, backend endpoints, frontend UI components, and Playwright tests in parallel, delivering in hours what traditionally required a multi-person team for months.
+- **Problem**: Deliver an end-to-end analytics platform with Postgres DB, FastAPI backend, React dashboard, and full CI/CD.
+- **1000x Execution**: After schemas and state transitions stabilize, independent workers construct persistence, backend, UI, and delivery surfaces against shared contracts, with Playwright and integration suites at the join.
 
 ### 3. Distributed Concurrency & Heisenbug Self-Healing
 - **Problem**: Intermittent deadlock in distributed event consumers occurring in 1 out of 1000 transactions.
-- **1000x Execution**: A Thinking-model agent writes a high-intensity property-based stress harness to deterministically reproduce the lock ordering inversion, refactors the locking mechanism, and executes 10,000 iterations to certify the fix with a Run Receipt.
+- **1000x Execution**: A deep-reasoning agent writes a seeded stress harness to reproduce the lock-order inversion, applies a bounded repair, and reruns targeted stress plus full regression checks. The receipt summarizes those declared graders.
 
 ### 4. Enterprise Compliance & Security Hardening
 - **Problem**: Prepare financial backend for SOC2/PCI-DSS compliance, removing hardcoded credentials and dynamic SQL.
-- **1000x Execution**: AST static analysis rules are integrated into the DoD harness. Subagents autonomously remediate all violations, producing a tamper-proof verification receipt for auditors.
+- **1000x Execution**: Policy-derived static rules are integrated into the DoD harness, remediation is independently reviewed, and the receipt summarizes the executed checks. It supports—but does not itself constitute—compliance evidence or sign-off.
 
 ---
 
 ## Included Automation Scripts
 
-- `scripts/generate_run_receipt.py`: Runs test suites, type checkers, and linters, generating a certified `RUN_RECEIPT.md`.
-- `scripts/extract_skill_trace.py`: Distills debugging traces and resolutions into a structured skill template.
+- `skills/1000x-engineer/scripts/generate_run_receipt.py`: Runs explicitly supplied commands and writes their exit-code evidence to `RUN_RECEIPT.md`.
+- `skills/1000x-engineer/scripts/extract_skill_trace.py`: Scaffolds distilled problem and solution fields into a structured skill template.

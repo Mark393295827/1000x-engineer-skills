@@ -10,7 +10,7 @@ This guide provides operational details, checklists, and execution commands for 
 Ground the autonomous factory in reality. Avoid hallucinations and misaligned solutions by obtaining direct empirical evidence from system logs, real payloads, and environment configurations.
 
 ### Action Checklist
-- [ ] **Probe the Environment**: Run non-destructive inspection commands (`git status`, dependency tree, environment variables, compiler/runtime versions).
+- [ ] **Probe the Environment**: Run non-destructive inspection commands (`git status`, dependency tree, compiler/runtime versions). Inspect only required environment-variable names or sanitized presence indicators; never dump secret-bearing values into prompts, logs, or receipts.
 - [ ] **Capture Live Traces & Reproduction Steps**:
   - Locate runtime logs, stack traces, and failure points.
   - Reproduce failures deterministically in a minimal reproduction harness.
@@ -22,10 +22,12 @@ Ground the autonomous factory in reality. Avoid hallucinations and misaligned so
 git status -s
 git log -n 5 --oneline
 
-# Capture error logs or execution trace
-npm test -- --verbose > trace.log 2>&1 || cat trace.log
+# Display an execution trace without writing into the repository
+npm test -- --verbose
 pytest -v -k "failing_test" --tb=short
 ```
+
+If a trace must be persisted, use an explicitly approved artifact or temporary path, sanitize secrets and personal data, and avoid overwriting existing files.
 
 ---
 
@@ -47,7 +49,7 @@ A robust Skill as Code specification must include:
 ## Step 3: Build Evals & Deterministic Test Harness First
 
 ### Purpose
-Establish an automated, tamper-proof quality firewall. In an autonomous software factory, tests are not written post-hoc; they are the factory's primary grading machinery.
+Establish an automated, reproducible quality firewall. In an autonomous software factory, tests are not written post-hoc; they are the factory's primary grading machinery.
 
 ### 4-Layer Testing Strategy
 1. **Unit Evals**: Fast, in-memory checks for pure functions and domain entities.
@@ -55,12 +57,12 @@ Establish an automated, tamper-proof quality firewall. In an autonomous software
 3. **Integration Evals**: Test service boundaries and persistence layers with sandboxed fixtures.
 4. **Static Assertions**: Linting, type-checking (mypy/tsc), formatting, security scanners.
 
-### Definition of Done (DoD) Criteria
+### Illustrative Definition of Done (DoD) Criteria
 ```markdown
-- [ ] 100% Pass on all unit and integration test suites.
-- [ ] 0 Linter or Type Checker warnings/errors.
-- [ ] 0 Regression on existing test suites.
-- [ ] Execution benchmark meets latency and throughput SLA.
+- [ ] All declared required unit and integration graders pass.
+- [ ] Required linter and type-checker gates report no task-attributable errors.
+- [ ] No regression relative to the recorded baseline. If the baseline was already red, document unchanged failures and narrow the completion claim.
+- [ ] When required by the contract or risk, execution benchmark meets latency and throughput SLA.
 ```
 
 ---
@@ -77,7 +79,7 @@ Establish an automated, tamper-proof quality firewall. In an autonomous software
         ▼
    [Sandbox Verification] ──(Tests & Linters)──> Pass?
         ├── NO  ──> [Auto-Diagnosis & Self-Healing Loop (Max N iterations)]
-        └── YES ──> [Commit & Issue Run Receipt]
+        └── YES ──> [Accept / Commit if Authorized & Issue Run Receipt]
 ```
 
 ### Parallel Dispatch ("Boil the Ocean")
@@ -92,14 +94,10 @@ When tackling massive tasks (e.g., refactoring an entire microservice system):
 ## Step 5: Audit Receipts, Not Code & Skillify Flywheel
 
 ### Audit Receipts
-- Human engineers review the machine-certified **Run Receipt** (`RUN_RECEIPT.md`), covering:
-  - Commit hash and timestamp.
-  - Test matrix pass rates (Total / Passed / Failed / Skipped).
-  - Static analysis clean bill.
-  - Verification artifacts.
+- Human engineers review the **Run Receipt** (`RUN_RECEIPT.md`) together with complete logs and risk-appropriate diff review. The bundled helper records a short Git SHA, timestamp, spec, scope, executed commands, durations, exit codes, and truncated diagnostics. Preserve dirty state, environment details, test counts, full logs, artifact hashes, and approvals separately when required.
 
 ### The Skillify Flywheel
 When an edge case or complex bug is resolved:
 1. Extract the problem pattern and the proven resolution strategy from conversation logs.
 2. Generate a reusable Skill package (or update existing `SKILL.md`).
-3. Future autonomous loops will automatically invoke this skill, preventing recurring failures.
+3. A host that discovers and correctly activates the reviewed skill can reuse the pattern and its regression eval, reducing the chance of recurrence. Verify activation behavior; it is host-dependent.

@@ -51,7 +51,7 @@ export interface TaskOutput {
 
 ## 4. Execution Procedure (Step-by-Step)
 
-1. **Validation & Pre-flight**: Run existing test harness to ensure clean baseline.
+1. **Validation & Pre-flight**: Run the existing harness and record the baseline, including any pre-existing failures and frozen dirty paths.
 2. **Implementation**: Apply focused modifications adhering to interface contracts.
-3. **Verification**: Run `npm test` or `pytest` to confirm 100% pass rate.
-4. **Receipt Generation**: Generate verified run receipt.
+3. **Verification**: Run the repository's declared required graders and confirm no task-attributable regression. If the baseline remains red for unrelated reasons, document unchanged failures and narrow the claim.
+4. **Receipt and Review**: Generate a grader-evidence summary, then review it against the contract, complete logs, omitted checks, and residual risks.

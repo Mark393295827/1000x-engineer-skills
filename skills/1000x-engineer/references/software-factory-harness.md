@@ -15,7 +15,7 @@ To prevent test flakiness and unintended side effects during autonomous agent ex
 
 ## 2. DoD (Definition of Done) Graders
 
-Autonomous software factories use programmatic graders to evaluate whether a task is complete. A task is considered DONE if and only if all graders pass:
+Autonomous software factories use programmatic graders to evaluate whether a task is complete. A task is eligible for DONE only when the required, risk-adequate graders and approval gates pass; green but incomplete graders do not prove completion:
 
 | Grader Type | Tooling Example | Pass Criteria |
 | :--- | :--- | :--- |
@@ -27,16 +27,18 @@ Autonomous software factories use programmatic graders to evaluate whether a tas
 
 ---
 
-## 3. Run Receipts (Immutable Execution Receipts)
+## 3. Run Receipts (Execution Evidence Summaries)
 
 ### What is a Run Receipt?
-A **Run Receipt** is a cryptographically or deterministically structured document produced after a complete verification run. It certifies that the autonomous changes satisfy all criteria without human inspection of every diff line.
+A **Run Receipt** is a structured summary produced after a verification run. Its strength is limited to the graders and evidence it records. The bundled helper writes editable Markdown; cryptographic integrity, controlled storage, and risk-based human review require separate systems.
 
-### Key Fields in a Run Receipt
-- **Timestamp & Environment Context**: System OS, Python/Node version, Git commit SHA.
+### Recommended Receipt Fields
+- **Timestamp & Environment Context**: System OS, relevant runtime versions, Git revision, and dirty state.
 - **Specification ID**: The skill contract or task requirement ID.
-- **Grading Matrix**: Table of each grader executed with status `PASS`/`FAIL` and execution time.
-- **Artifacts Generated**: List of modified files, test outputs, and diagnostic logs.
+- **Grading Matrix**: Each grader executed with command, status, duration, and result details.
+- **Artifacts Generated**: Modified files, test outputs, complete logs, and hashes where required.
+
+The current helper records only a subset: timestamp, spec, scope, short Git SHA, command, duration, exit code, and truncated stdout/stderr.
 
 ---
 
