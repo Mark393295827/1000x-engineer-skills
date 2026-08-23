@@ -1,17 +1,52 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "1000x Engineer Execution Contract v1",
   "type": "object",
-  "required": ["mission", "scope", "invariants", "forbidden", "authority", "budget", "rollback", "stop_conditions", "definition_of_done"],
+  "required": ["version", "mission", "scope", "interfaces", "invariants", "forbidden", "authority", "budget", "rollback", "stop_conditions", "definition_of_done"],
   "properties": {
-    "mission": {"type": "string"},
-    "scope": {"type": "array"},
-    "invariants": {"type": "array"},
-    "forbidden": {"type": "array"},
-    "authority": {"type": "object"},
-    "budget": {"type": "object"},
-    "rollback": {"type": "array"},
-    "stop_conditions": {"type": "array"},
-    "definition_of_done": {"type": "array"}
+    "version": {"const": 1},
+    "mission": {"type": "string", "minLength": 1},
+    "scope": {
+      "type": "object",
+      "required": ["included", "excluded", "frozen"],
+      "properties": {
+        "included": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "excluded": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "frozen": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      },
+      "additionalProperties": false
+    },
+    "interfaces": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "invariants": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "forbidden": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "authority": {
+      "type": "object",
+      "required": ["read", "edit", "test", "network", "credentials", "commit", "merge", "deploy"],
+      "properties": {
+        "read": {"type": "boolean"},
+        "edit": {"type": "boolean"},
+        "test": {"type": "boolean"},
+        "network": {"type": "boolean"},
+        "credentials": {"type": "boolean"},
+        "commit": {"type": "boolean"},
+        "merge": {"type": "boolean"},
+        "deploy": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "budget": {
+      "type": "object",
+      "required": ["max_iterations", "max_parallel_workers", "max_wall_seconds"],
+      "properties": {
+        "max_iterations": {"type": "integer", "minimum": 1},
+        "max_parallel_workers": {"type": "integer", "minimum": 1},
+        "max_wall_seconds": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    },
+    "rollback": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "stop_conditions": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "definition_of_done": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }

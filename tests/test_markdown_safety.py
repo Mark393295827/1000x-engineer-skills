@@ -16,6 +16,8 @@ def test_markdown_escapes_delimiters_and_redacts_secrets(tmp_path: Path) -> None
             {
                 "id": "unsafe-grader",
                 "argv": [sys.executable, "-c", "print('token=supersecret | `fence`')"],
+                "timeout_seconds": 300,
+                "required": True,
             }
         ],
     }

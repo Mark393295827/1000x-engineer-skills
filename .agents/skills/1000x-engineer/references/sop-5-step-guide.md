@@ -74,7 +74,7 @@ Establish an automated, reproducible quality firewall. In an autonomous software
 [Trigger Event / Spec]
         │
         ▼
-   [Execute Plan] ──(Subagents: Flash / Thinking)──> [Code & Artifact Mutation]
+   [Execute Plan] ──(T1/T2/T3 capability as needed)──> [Code & Artifact Mutation]
         │
         ▼
    [Sandbox Verification] ──(Tests & Linters)──> Pass?
@@ -85,16 +85,16 @@ Establish an automated, reproducible quality firewall. In an autonomous software
 ### Parallel Dispatch ("Boil the Ocean")
 When tackling massive tasks (e.g., refactoring an entire microservice system):
 1. Partition into non-overlapping domains (Data Models, Services, API, UI, Evals).
-2. Spawn parallel subagents using `invoke_subagent`.
-3. Provide each subagent with its dedicated contract and workspace boundary.
-4. Merge results through the verification harness.
+2. Use the host's native worker mechanism only after interfaces, ownership, join rules, and authority are stable.
+3. Provide each worker with its dedicated contract and workspace boundary.
+4. Merge results through the verification harness and a separate evaluator when risk warrants it.
 
 ---
 
 ## Step 5: Audit Receipts, Not Code & Skillify Flywheel
 
 ### Audit Receipts
-- Human engineers review the **Run Receipt** (`RUN_RECEIPT.md`) together with complete logs and risk-appropriate diff review. The bundled helper records a short Git SHA, timestamp, spec, scope, executed commands, durations, exit codes, and truncated diagnostics. Preserve dirty state, environment details, test counts, full logs, artifact hashes, and approvals separately when required.
+- Human engineers review the **Run Receipt** (`RUN_RECEIPT.md` and `RUN_RECEIPT.json`) together with complete logs and risk-appropriate diff review. The v2 helper produces machine-readable JSON, a checksum sidecar, and Markdown summaries detailing Git revisions, dirty status, execution environment, requirement mappings, test durations, and artifact hashes.
 
 ### The Skillify Flywheel
 When an edge case or complex bug is resolved:

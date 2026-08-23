@@ -12,10 +12,13 @@ class PromoAnimationEngine {
     this.sceneDuration = 6000; // 6 seconds per scene
     this.audioEnabled = false;
     this.audioCtx = null;
+    this.activeSimTimeouts = [];
 
     this.initCanvas();
     this.initAudio();
     this.initUI();
+    this.initKeyboard();
+    this.initTouch();
     this.startAutoPlay();
     this.animateMultiplier();
   }
@@ -74,20 +77,30 @@ class PromoAnimationEngine {
   }
 
   /* -------------------------------------------------------------
-     2. Interactive Particle Matrix Canvas
+     2. Interactive Particle Matrix Canvas (HiDPI Scaled)
      ------------------------------------------------------------- */
   initCanvas() {
     const canvas = document.getElementById('bg-canvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
+    let width = 0;
+    let height = 0;
+    let dpr = window.devicePixelRatio || 1;
 
-    window.addEventListener('resize', () => {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-    });
+    const resize = () => {
+      dpr = window.devicePixelRatio || 1;
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    resize();
+    window.addEventListener('resize', resize);
 
     const particles = [];
     const numParticles = Math.min(80, Math.floor(width / 18));
@@ -165,6 +178,7 @@ class PromoAnimationEngine {
     this.scenes = document.querySelectorAll('.scene');
     this.navPills = document.querySelectorAll('.nav-pill');
     this.progressBar = document.getElementById('progress-fill');
+    this.progressTrack = document.getElementById('progress-track');
     this.playBtn = document.getElementById('btn-play');
     this.prevBtn = document.getElementById('btn-prev');
     this.nextBtn = document.getElementById('btn-next');
@@ -200,19 +214,135 @@ class PromoAnimationEngine {
       });
     }
 
-    // Interactive simulator trigger in Scene 7
+    if (this.progressTrack) {
+      this.progressTrack.addEventListener('click', (e) => {
+        const rect = this.progressTrack.getBoundingClientRect();
+        const pos = (e.clientX - rect.left) / rect.width;
+        const target = Math.min(this.totalScenes - 1, Math.max(0, Math.floor(pos * this.totalScenes)));
+        this.goToScene(target);
+        this.pauseAutoPlay();
+      });
+    }
+
+    // Interactive simulator in Scene 7
     const simBtn = document.getElementById('btn-run-sim');
+    const resetBtn = document.getElementById('btn-reset-sim');
     const simOutput = document.getElementById('sim-terminal-output');
+    const cliInput = document.getElementById('cli-input');
+    const presetButtons = document.querySelectorAll('.btn-preset');
+
     if (simBtn && simOutput) {
       simBtn.addEventListener('click', () => {
-        this.runSimulation(simOutput);
+        const customTask = cliInput && cliInput.value.trim() ? cliInput.value.trim() : 'Full-Stack Autonomous SOP';
+        this.runSimulation(simOutput, customTask);
+      });
+    }
+
+    if (resetBtn && simOutput) {
+      resetBtn.addEventListener('click', () => {
+        this.clearSimTimeouts();
+        simOutput.innerHTML = '<div style="color:var(--text-muted);">Terminal reset. Choose a preset or click "Run Autonomous SOP"...</div>';
+        const badge = document.getElementById('sim-status-badge');
+        if (badge) {
+          badge.textContent = '● READY';
+          badge.style.color = 'var(--neon-green)';
+        }
+        if (cliInput) cliInput.value = '';
+      });
+    }
+
+    presetButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const taskType = btn.getAttribute('data-task');
+        let taskName = 'Autonomous Refactor';
+        if (taskType === 'auth-refactor') taskName = 'Decompose Legacy Auth Monolith (MECE)';
+        if (taskType === 'security-fix') taskName = 'SOC2 / Zero-CVE AST Remediation';
+        if (taskType === 'e2e-matrix') taskName = 'Full E2E Playwright Matrix Verification';
+        if (cliInput) cliInput.value = taskName;
+        if (simOutput) this.runSimulation(simOutput, taskName);
+      });
+    });
+
+    if (cliInput && simOutput) {
+      cliInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const taskName = cliInput.value.trim() || 'Custom Pipeline Task';
+          this.runSimulation(simOutput, taskName);
+        }
       });
     }
   }
 
+  /* -------------------------------------------------------------
+     4. Keyboard Navigation & Shortcuts
+     ------------------------------------------------------------- */
+  initKeyboard() {
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+        return;
+      }
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        this.isPlaying ? this.pauseAutoPlay() : this.startAutoPlay();
+      } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+        this.goToScene((this.currentScene + 1) % this.totalScenes);
+        this.pauseAutoPlay();
+      } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+        this.goToScene((this.currentScene - 1 + this.totalScenes) % this.totalScenes);
+        this.pauseAutoPlay();
+      } else if (e.code === 'KeyM') {
+        document.getElementById('btn-audio')?.click();
+      } else if (e.key >= '1' && e.key <= '7') {
+        this.goToScene(parseInt(e.key, 10) - 1);
+        this.pauseAutoPlay();
+      } else if ((e.code === 'Enter' || e.code === 'KeyR') && this.currentScene === 6) {
+        document.getElementById('btn-run-sim')?.click();
+      }
+    });
+  }
+
+  /* -------------------------------------------------------------
+     5. Mobile Touch Gestures
+     ------------------------------------------------------------- */
+  initTouch() {
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    document.addEventListener(
+      'touchstart',
+      (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+      },
+      { passive: true }
+    );
+
+    document.addEventListener(
+      'touchend',
+      (e) => {
+        const touchEndX = e.changedTouches[0].screenX;
+        const touchEndY = e.changedTouches[0].screenY;
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = touchEndY - touchStartY;
+
+        if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+          if (deltaX < 0) {
+            this.goToScene((this.currentScene + 1) % this.totalScenes);
+          } else {
+            this.goToScene((this.currentScene - 1 + this.totalScenes) % this.totalScenes);
+          }
+          this.pauseAutoPlay();
+        }
+      },
+      { passive: true }
+    );
+  }
+
   goToScene(index) {
-    this.scenes.forEach(s => s.classList.remove('active'));
-    this.navPills.forEach(p => p.classList.remove('active'));
+    this.scenes.forEach((s) => s.classList.remove('active'));
+    this.navPills.forEach((p) => p.classList.remove('active'));
 
     this.currentScene = index;
     if (this.scenes[index]) this.scenes[index].classList.add('active');
@@ -246,7 +376,7 @@ class PromoAnimationEngine {
   }
 
   /* -------------------------------------------------------------
-     4. Dynamic Visual Effects & Counters
+     6. Dynamic Visual Effects & Counters
      ------------------------------------------------------------- */
   animateMultiplier() {
     const el = document.getElementById('multiplier-counter');
@@ -267,29 +397,88 @@ class PromoAnimationEngine {
     }, 280);
   }
 
-  runSimulation(outputEl) {
+  clearSimTimeouts() {
+    this.activeSimTimeouts.forEach((t) => clearTimeout(t));
+    this.activeSimTimeouts = [];
+  }
+
+  runSimulation(outputEl, taskTitle = 'Full-Stack Autonomous SOP') {
+    this.clearSimTimeouts();
     outputEl.innerHTML = '';
-    const logs = [
-      '[1/5] 🔍 Forward Deploy: Capturing live environment traces...',
-      '[2/5] 📝 Skills as Code: Validating Markdown contract schema...',
-      '[3/5] 🛡️ Evals First: Launching isolated test harness (50 tests)...',
-      '[4/5] ⚡ Autonomous Loop: Dispatching parallel subagents...',
-      '     > Subagent #1 (Flash): Database migration generated (0.8s)',
-      '     > Subagent #2 (Thinking): Lock concurrency verified (1.4s)',
-      '     > Subagent #3 (Flash): 12 API route contracts created (0.9s)',
-      '[5/5] 📜 Audit Receipt: RUN_RECEIPT.md compiled. STATUS: 100% PASS ✅'
+
+    const badge = document.getElementById('sim-status-badge');
+    const updateBadge = (status, color) => {
+      if (badge) {
+        badge.textContent = `● ${status}`;
+        badge.style.color = color;
+      }
+    };
+
+    updateBadge('PREFLIGHT', 'var(--neon-amber)');
+
+    const steps = [
+      {
+        text: `[1/5] 🔍 PREFLIGHT: Task "${taskTitle}" initialized. Git SHA verified, workspace clean.`,
+        color: '#00f0ff',
+        status: 'PREFLIGHT',
+        statusColor: 'var(--neon-amber)',
+      },
+      {
+        text: `[2/5] 📝 CONTRACT: Strict schema validated (task-contract.schema.json). 0 mutable leaks.`,
+        color: '#00f0ff',
+        status: 'CONTRACTED',
+        statusColor: 'var(--neon-amber)',
+      },
+      {
+        text: `[3/5] 🛡️ EVALS FIRST: Grader manifest loaded (48 unit, 12 property, 8 E2E gates).`,
+        color: '#00f0ff',
+        status: 'EVAL_READY',
+        statusColor: 'var(--neon-amber)',
+      },
+      {
+        text: `[4/5] ⚡ EXECUTING: Routing T0 tools (linters), T1 fast agents (routes), T3 reasoning (invariants).`,
+        color: '#ffb86c',
+        status: 'EXECUTING',
+        statusColor: '#0077ff',
+      },
+      {
+        text: `     > T1 Worker #1: Scaffolding database migrations (0.6s)`,
+        color: '#00f0ff',
+        status: 'EXECUTING',
+        statusColor: '#0077ff',
+      },
+      {
+        text: `     > T3 Reasoner #2: Verifying lock order inversion & deadlock freedom (1.2s)`,
+        color: '#ffb86c',
+        status: 'EXECUTING',
+        statusColor: '#0077ff',
+      },
+      {
+        text: `     > T0 Graders: 68/68 test assertions executed in sandboxed isolation.`,
+        color: '#00f0ff',
+        status: 'VERIFYING',
+        statusColor: '#ffb86c',
+      },
+      {
+        text: `[5/5] 📜 RECEIPT & SKILLIFY: RUN_RECEIPT.json + sha256 emitted. STATUS: 100% PASS ✅`,
+        color: '#00ff88',
+        status: 'ACCEPTED',
+        statusColor: 'var(--neon-green)',
+      },
     ];
 
-    logs.forEach((line, i) => {
-      setTimeout(() => {
+    steps.forEach((step, i) => {
+      const timeout = setTimeout(() => {
+        updateBadge(step.status, step.statusColor);
         const div = document.createElement('div');
-        div.textContent = line;
-        div.style.color = line.includes('PASS') ? '#00ff88' : '#00f0ff';
+        div.textContent = step.text;
+        div.style.color = step.color;
         outputEl.appendChild(div);
         outputEl.scrollTop = outputEl.scrollHeight;
-        this.playTone(400 + i * 80, 'sine', 0.08, 0.03);
-        if (i === logs.length - 1) this.playSuccessChime();
-      }, i * 350);
+        this.playTone(380 + i * 75, 'sine', 0.08, 0.03);
+        if (i === steps.length - 1) this.playSuccessChime();
+      }, i * 320);
+      this.activeSimTimeouts.push(timeout);
     });
   }
 }

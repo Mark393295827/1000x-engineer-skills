@@ -1,0 +1,13 @@
+{
+  "status": "REVIEWED",
+  "reviewer_role": "maintainer",
+  "reviewed_at": "2026-08-23T00:00:00Z",
+  "scope": [
+    "canonical plugin package",
+    "receipt safety and integrity semantics",
+    "contract, lifecycle, and distribution controls"
+  ],
+  "independent": false,
+  "release_approval": false,
+  "note": "This record supports REVIEWED only. Independent evaluation and release approval remain required for later promotion."
+}

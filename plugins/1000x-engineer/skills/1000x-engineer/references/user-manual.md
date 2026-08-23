@@ -64,22 +64,23 @@ The complete package must retain this layout:
 | `SKILL.md` | Activation description and five-step protocol. |
 | `references/` | Detailed SOP, harness, routing, Skillify, and advanced guidance. |
 | `resources/` | Contract, eval-harness, and run-receipt templates. |
-| `scripts/generate_run_receipt.py` | Runs explicitly supplied grader commands and writes a receipt. |
+| `evals/` | Machine-readable positive, negative, and ambiguous activation cases. |
+| `evidence/` | Lifecycle-gated review and later independent-evaluation evidence. |
+| `scripts/generate_run_receipt.py` | Runs manifest grader argv arrays and writes a receipt plus final JSON sidecar hash. |
 | `scripts/extract_skill_trace.py` | Scaffolds a new skill from supplied problem and solution fields. |
 
-This repository contains two mirrors of the same package:
+The sole canonical package is:
 
-- `.agents/skills/1000x-engineer/` for workspace discovery.
-- `skills/1000x-engineer/` as the canonical distributable mirror.
+- `plugins/1000x-engineer/skills/1000x-engineer/`
 
-Contributors should edit `skills/1000x-engineer/` first and mechanically synchronize `.agents/skills/1000x-engineer/`; do not evolve the mirrors independently.
+The `.agents/skills/1000x-engineer/` and `skills/1000x-engineer/` directories are generated compatibility mirrors. Contributors edit only the canonical package, then run `python scripts/sync_compatibility_mirrors.py --prune` followed by `--check`.
 
 When installing elsewhere, copy or install the entire `1000x-engineer` directory. Codex installations may discover user skills under `.agents/skills`, while the bundled skill installer in some environments uses `.codex/skills`. After installation, start a new task; if discovery still does not refresh, restart Codex.
 
 In Codex, a portable installation request is:
 
 ```text
-Install the skill from this project's skills/1000x-engineer directory.
+Install the skill from this project's plugins/1000x-engineer/skills/1000x-engineer directory.
 ```
 
 ### Verify a Codex installation
@@ -91,13 +92,17 @@ $skillCandidates = @(
   (Join-Path $env:USERPROFILE ".agents\skills\1000x-engineer"),
   (Join-Path $env:USERPROFILE ".codex\skills\1000x-engineer")
 )
-$skillCandidates | Where-Object { Test-Path -LiteralPath (Join-Path $_ "SKILL.md") }
+$skillCandidates | Where-Object {
+  Test-Path -LiteralPath (Join-Path $_ "SKILL.md") -and
+  Test-Path -LiteralPath (Join-Path $_ "lifecycle.json") -and
+  Test-Path -LiteralPath (Join-Path $_ "evals\activation-cases.json")
+}
 ```
 
 On macOS or Linux, check both common user-scope locations:
 
 ```bash
-test -f "$HOME/.agents/skills/1000x-engineer/SKILL.md" || test -f "$HOME/.codex/skills/1000x-engineer/SKILL.md"
+test -f "$HOME/.agents/skills/1000x-engineer/SKILL.md" -a -f "$HOME/.agents/skills/1000x-engineer/lifecycle.json" || test -f "$HOME/.codex/skills/1000x-engineer/SKILL.md" -a -f "$HOME/.codex/skills/1000x-engineer/lifecycle.json"
 ```
 
 If your Codex home is customized, use that configured location instead.
@@ -288,13 +293,17 @@ The receipt helper **executes the supplied argv arrays again** from the verified
 $skillRoot = @(
   (Join-Path $env:USERPROFILE ".agents\skills\1000x-engineer"),
   (Join-Path $env:USERPROFILE ".codex\skills\1000x-engineer")
-) | Where-Object { Test-Path -LiteralPath (Join-Path $_ "SKILL.md") } | Select-Object -First 1
+) | Where-Object {
+  Test-Path -LiteralPath (Join-Path $_ "SKILL.md") -and
+  Test-Path -LiteralPath (Join-Path $_ "lifecycle.json") -and
+  Test-Path -LiteralPath (Join-Path $_ "evals\activation-cases.json")
+} | Select-Object -First 1
 if (-not $skillRoot) { throw "1000x-engineer is not installed in a recognized user-scope location" }
 $receiptScript = Join-Path $skillRoot "scripts\generate_run_receipt.py"
 python $receiptScript --repo-root (Get-Location) --manifest "grader-manifest.json" --spec "Idempotent-Webhooks" --scope "services/webhooks"
 ```
 
-Replace the sample graders with the project’s required native commands. Omit the Ruff grader if Ruff is not a declared project gate. If you are working inside this skill’s source checkout, the helper is also available at `skills/1000x-engineer/scripts/generate_run_receipt.py`; resolve that script path before changing to the target repository root.
+Replace the sample graders with the project’s required native commands. Omit the Ruff grader if Ruff is not a declared project gate. If you are working inside this skill’s source checkout, use `plugins/1000x-engineer/skills/1000x-engineer/scripts/generate_run_receipt.py`; resolve that canonical script path before changing to the target repository root.
 
 On macOS or Linux, resolve the same two locations:
 
@@ -371,17 +380,18 @@ Supported arguments:
 | `--manifest` | JSON manifest containing `version: 2` and grader objects with `id`, `argv`, `timeout_seconds`, and `required`. |
 | `--repo-root` | Verified repository root used as grader `cwd`; defaults to the current directory. |
 | `--output-dir` | Contained output directory for JSON, Markdown, hash, and redacted logs. |
-| `--allow-shell --test-cmd "Name::command"` | Explicit legacy compatibility mode. Never use with untrusted input. |
+| `--contract` | Optional strict task-contract JSON. It blocks grader execution if testing is unauthorized or timeout budget is exceeded. |
 
 Current behavior and limits:
 
-- Each manifest grader is an argument vector with a 300-second default timeout and `shell=False`.
+- Each manifest grader is an argument vector with an explicit timeout and `shell=False`.
 - Commands run sequentially and pass only when their exit code is zero.
 - If no required grader is supplied, the status is `INSUFFICIENT_EVIDENCE`.
-- The JSON receipt records schema version, repository commit/branch/dirty state, environment, graders, hashes, omitted checks, and residual risks.
+- The JSON receipt records schema version, repository commit/branch/dirty state, environment, requirement outcomes, graders, hashes, omitted checks, and residual risks.
 - The Markdown rendering escapes pipes/backticks and redacts common secrets. It is an editable evidence summary, not cryptographic proof or tamper protection.
-- A required grader failure is `FAILED`; an execution error is `ABORTED`; all required graders passing is `VERIFIED`.
-- Shell commands remain available only through explicit `--allow-shell` legacy mode, which wraps the reviewed string in a shell argv. Do not interpolate untrusted input.
+- A required grader or mandatory requirement failure is `FAILED`; an execution error is `ABORTED`; all required graders and mandatory requirements passing is `VERIFIED`.
+- `RUN_RECEIPT.json.sha256` is the authoritative SHA-256 of the final JSON receipt. There is no embedded self-hash.
+- Shell-string execution is not supported. Convert each check into an explicit `argv` array.
 
 If a check takes more than five minutes, intentionally shard it into truthful subcommands that fit the limit or run and preserve it separately, then disclose that it is not captured by this helper.
 
@@ -403,7 +413,11 @@ if (Test-Path -LiteralPath $skillTarget) { throw "Skill target already exists: $
 $skillRoot = @(
   (Join-Path $env:USERPROFILE ".agents\skills\1000x-engineer"),
   (Join-Path $env:USERPROFILE ".codex\skills\1000x-engineer")
-) | Where-Object { Test-Path -LiteralPath (Join-Path $_ "SKILL.md") } | Select-Object -First 1
+) | Where-Object {
+  Test-Path -LiteralPath (Join-Path $_ "SKILL.md") -and
+  Test-Path -LiteralPath (Join-Path $_ "lifecycle.json") -and
+  Test-Path -LiteralPath (Join-Path $_ "evals\activation-cases.json")
+} | Select-Object -First 1
 if (-not $skillRoot) { throw "1000x-engineer is not installed in a recognized user-scope location" }
 python (Join-Path $skillRoot "scripts\extract_skill_trace.py") --name $skillName --desc "Use when concurrent duplicate webhook deliveries can race before transaction commit." --problem "Duplicate workers perform the same side effect." --root-cause "The read-before-write sequence lacks a cross-worker guard." --solution "Acquire a bounded lock with TTL; re-read state; perform one transition; release in finally; run the concurrency regression test." --out-dir ".agents\skills"
 ```
@@ -478,15 +492,15 @@ If the full baseline was already red, compare final failures with the recorded b
 | Symptom | Cause | Action |
 | --- | --- | --- |
 | The skill does not activate. | Host discovery did not refresh or auto-trigger. | Verify the complete package path, begin a new turn, and invoke `1000x-engineer` explicitly. |
-| `invoke_subagent` or another name is “not a command.” | Names in the reference material describe host tools, not shell executables. | Use your agent platform’s native team or subagent mechanism. |
-| Receipt passes almost instantly. | No meaningful `--test-cmd` was supplied. | Inspect the receipt matrix and rerun with every required grader explicitly listed. |
+| A named worker capability is “not a command.” | Reference terminology describes host capabilities, not shell executables. | Use your agent platform’s native team or worker mechanism, or work serially. |
+| Receipt is `INSUFFICIENT_EVIDENCE`. | No manifest or no required grader was supplied. | Add every required grader to the manifest and rerun. |
 | Receipt is missing important output. | Per-stream logs are truncated. | Keep complete CI or local logs as separate artifacts. |
 | Git SHA is wrong or absent. | Script ran outside the target Git repository. | Run it from the target repository root. |
 | A grader times out. | The command exceeded 300 seconds. | Run it directly to diagnose, then shard or wrap it with a bounded, truthful status command. |
 | Agents overwrite each other. | Ownership or interfaces overlap. | Stop, re-partition the graph, freeze shared contracts, and integrate serially. |
 | Tests are flaky. | Time, randomness, network, dependencies, or fixtures are uncontrolled. | Isolate fixtures, pin dependencies, seed randomness, freeze clocks, and mock networks. |
 | Repair loops do not converge. | The diagnosis or contract has not changed. | Stop at the iteration limit; revisit assumptions, scope, and architecture. |
-| Skillify overwrote a file. | The scaffolder writes `SKILL.md` without a conflict prompt. | Restore from version control and rerun with a new name or output directory. |
+| Skillify aborted or reported conflict. | The target skill directory already exists and `--overwrite` was not passed. | Inspect the existing directory, choose a new `--name` or `--out-dir`, or supply `--overwrite` intentionally. |
 
 ## 10. End-of-run operator checklist
 

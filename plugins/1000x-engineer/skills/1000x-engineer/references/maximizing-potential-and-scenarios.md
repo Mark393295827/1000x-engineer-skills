@@ -192,9 +192,9 @@ Model names differ across hosts. Route by ambiguity, blast radius, reversibility
 | Route | Best for | Avoid when |
 | --- | --- | --- |
 | Deterministic tool | Search, compilation, formatting, linting, schema generation, tests. | The task requires unresolved judgment. |
-| Lite or fast model | Repetitive conversion, formatting, scaffolding, and narrow searches with strong graders. | Interfaces or requirements are ambiguous. |
-| Balanced model | Localized implementation, tests, and refactors following established patterns. | Failure spans multiple layers or has high blast radius. |
-| Deep-reasoning model | Architecture, interfaces, concurrency, migrations, security boundaries, and cross-layer diagnosis. | The task is fully mechanical and tool-solvable. |
+| T1 fast agent | Repetitive conversion, formatting, scaffolding, and narrow searches with strong graders. | Interfaces or requirements are ambiguous. |
+| T2 general agent | Localized implementation, tests, and refactors following established patterns. | Failure spans multiple layers or has high blast radius. |
+| T3 reasoning agent | Architecture, interfaces, concurrency, migrations, security boundaries, and cross-layer diagnosis. | The task is fully mechanical and tool-solvable. |
 | Independent evaluator | Acceptance, ambiguity, contradiction, and regression review. | It receives only the builder’s conclusion instead of artifacts and contract. |
 
 Use the cheapest capable route, then escalate when evidence—not instinct—shows that the task exceeds it.
@@ -238,7 +238,7 @@ Its `VERIFIED` status means only that every required grader actually executed an
 
 The generated Markdown file is editable. If immutability matters, store it in a signed commit, attach hashes or signatures, and preserve it in controlled CI or write-once storage.
 
-In v1.0, the default helper executes manifest `argv` arrays with `shell=False`. Legacy shell strings require explicit `--allow-shell` and must be reviewed.
+In v1.0, the helper executes manifest `argv` arrays with `shell=False`. Shell-string graders are not supported; represent any reviewed command as an explicit argument array.
 
 Receipt metadata and previews are escaped for Markdown and common secrets are redacted. Complete logs remain under `.evidence/logs`; review them and treat the receipt as evidence, not proof.
 
@@ -410,12 +410,12 @@ if the signature repeats or scope/authority must expand.
 - Do not call the current receipt cryptographically immutable or tamper-proof.
 - Do not eliminate risk-based human review for architecture, authentication, payments, cryptography, migrations, privacy, security, or compliance.
 - Do not pass untrusted text into shell grader commands.
-- Do not render or publish unsanitized receipt output from untrusted tests or tools; the helper does not escape Markdown.
+- Do not render or publish uninspected receipt output from untrusted tools without reviewing rendered Markdown and log sidecars.
 - Do not place secrets or sensitive production payloads in prompts, logs, receipts, or extracted skills.
 - Do not use parallelism without stable boundaries, exclusive ownership, and a serial integration owner.
 - Do not retry an unchanged failure signature indefinitely.
 - Do not Skillify a one-off workaround without a regression eval and trigger tests.
-- Do not pass path-like or unvalidated values as a Skillify name; the scaffolder does not enforce kebab-case or output-directory containment.
+- Do not bypass candidate skill verification; ensure extracted skills pass kebab-case validation, output containment, and independent evaluation before promotion.
 - Do not commit, merge, deploy, spend, publish, or mutate external systems without the required authority.
 - Do not promise a multiplier. Report measured before-and-after verified outcomes.
 

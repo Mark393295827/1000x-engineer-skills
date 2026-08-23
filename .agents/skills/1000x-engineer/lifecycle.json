@@ -1,0 +1,10 @@
+{
+  "version": "1.0.0",
+  "status": "REVIEWED",
+  "transitions": {
+    "CANDIDATE": ["REVIEWED"],
+    "REVIEWED": ["EVAL_PASS"],
+    "EVAL_PASS": ["PUBLISHED"],
+    "PUBLISHED": []
+  }
+}

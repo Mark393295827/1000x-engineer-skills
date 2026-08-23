@@ -31,3 +31,16 @@ def test_skillify_target_is_contained(tmp_path: Path) -> None:
     assert module.safe_target(tmp_path, "safe-skill") == (tmp_path / "safe-skill").resolve()
     with pytest.raises(ValueError):
         module.safe_target(tmp_path, "../outside")
+
+
+def test_validate_scope_path_rejects_drive_and_absolute_paths() -> None:
+    module = load(
+        "receipt_security", "plugins/1000x-engineer/skills/1000x-engineer/scripts/generate_run_receipt.py"
+    )
+    with pytest.raises(ValueError):
+        module.validate_scope_path("C:/System/Path", "scope")
+    with pytest.raises(ValueError):
+        module.validate_scope_path("/absolute/path", "scope")
+    with pytest.raises(ValueError):
+        module.validate_scope_path("relative/../escape", "scope")
+    assert module.validate_scope_path("src/valid", "scope") == "src/valid"

@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "mission": "Fix the declared defect without broadening the public interface.",
+  "scope": {
+    "included": ["src/target_module.py", "tests"],
+    "excluded": ["deployment", "production-data"],
+    "frozen": ["public-api"]
+  },
+  "interfaces": ["The existing public API remains backward compatible."],
+  "invariants": ["No task-attributable regression is introduced."],
+  "forbidden": ["Do not access credentials or deploy changes."],
+  "authority": {
+    "read": true,
+    "edit": true,
+    "test": true,
+    "network": false,
+    "credentials": false,
+    "commit": false,
+    "merge": false,
+    "deploy": false
+  },
+  "budget": {
+    "max_iterations": 3,
+    "max_parallel_workers": 1,
+    "max_wall_seconds": 900
+  },
+  "rollback": ["Revert the task-local commit or restore the recorded baseline."],
+  "stop_conditions": ["Stop after the same failure signature repeats with no changed diagnosis or strategy."],
+  "definition_of_done": ["All mandatory task graders pass and required evidence is complete."]
+}
