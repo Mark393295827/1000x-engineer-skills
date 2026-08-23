@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Create a v2 machine-readable Run Receipt without shell injection."""
+"""Create a v2 machine-readable Run Receipt from a safe grader manifest."""
 
 from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 import platform
@@ -14,14 +15,41 @@ import sys
 import tempfile
 import uuid
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
+from jsonschema import Draft202012Validator, FormatChecker
+
+GRADER_ID_PATTERN = re.compile(r"[A-Za-z0-9._-]+")
+WINDOWS_RESERVED_NAMES = {
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    *(f"COM{number}" for number in range(1, 10)),
+    *(f"LPT{number}" for number in range(1, 10)),
+}
 SECRET_PATTERNS = [
     re.compile(r"(?i)(authorization\s*[:=]\s*)([^\s,;]+)"),
     re.compile(r"(?i)(bearer\s+)([^\s,;]+)"),
     re.compile(r"(?i)(api[_-]?key|token|password|secret)\s*[:=]\s*([^\s,;]+)"),
 ]
+MANIFEST_KEYS = {"version", "requirements", "graders", "artifacts", "omitted_checks"}
+GRADER_REQUIRED_KEYS = {"id", "argv", "timeout_seconds", "required"}
+GRADER_ALLOWED_KEYS = GRADER_REQUIRED_KEYS | {"access"}
+REQUIREMENT_KEYS = {"id", "description", "grader_ids", "mandatory"}
+AUTHORITY_KEYS = {
+    "read",
+    "edit",
+    "test",
+    "network",
+    "credentials",
+    "commit",
+    "merge",
+    "deploy",
+}
+ACCESS_KEYS = AUTHORITY_KEYS | {"read_paths", "write_paths"}
+RESOURCE_DIR = Path(__file__).resolve().parents[1] / "resources"
 
 
 def sha256_file(path: Path) -> str:
@@ -75,10 +103,172 @@ def rooted_path(root: Path, value: str | Path) -> Path:
 
 def git_value(repo_root: Path, *args: str, default: str = "") -> str:
     try:
-        result = subprocess.run(["git", *args], cwd=repo_root, capture_output=True, text=True, check=False)
+        result = subprocess.run(
+            ["git", *args], cwd=repo_root, capture_output=True, text=True, check=False
+        )
     except OSError:
         return default
     return result.stdout.strip() if result.returncode == 0 else default
+
+
+def validate_against_schema(payload: dict[str, Any], schema_name: str) -> None:
+    schema_path = RESOURCE_DIR / schema_name
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    errors = sorted(validator.iter_errors(payload), key=lambda item: list(item.absolute_path))
+    if errors:
+        raise ValueError(f"{schema_name} validation failed: {errors[0].message}")
+
+
+def load_contract(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("contract must be a JSON object")
+    module_path = Path(__file__).with_name("validate_contract.py")
+    spec = importlib.util.spec_from_file_location("receipt_contract_validator", module_path)
+    if not spec or not spec.loader:
+        raise ValueError("cannot load contract validator")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.validate_contract(payload)
+    validate_against_schema(payload, "task-contract.schema.json")
+    return payload
+
+
+def validate_keys(value: dict[str, Any], required: set[str], allowed: set[str], label: str) -> None:
+    missing = required - value.keys()
+    unknown = value.keys() - allowed
+    if missing:
+        raise ValueError(f"{label} is missing required fields: {', '.join(sorted(missing))}")
+    if unknown:
+        raise ValueError(f"{label} has unsupported fields: {', '.join(sorted(unknown))}")
+
+
+def validate_scope_path(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{label} must be a non-empty repository-relative path")
+    normalized = value.replace("\\", "/").rstrip("/") or "."
+    candidate = PurePosixPath(normalized)
+    if (
+        candidate.is_absolute()
+        or any(part == ".." for part in candidate.parts)
+        or (len(normalized) >= 2 and normalized[1] == ":" and normalized[0].isalpha())
+    ):
+        raise ValueError(f"{label} must not be absolute or contain '..'")
+    return normalized
+
+
+def validate_access(access: dict[str, Any], label: str) -> None:
+    validate_keys(access, ACCESS_KEYS, ACCESS_KEYS, label)
+    if not all(isinstance(access[key], bool) for key in AUTHORITY_KEYS):
+        raise ValueError(f"{label} authority values must be booleans")
+    for key in ("read_paths", "write_paths"):
+        value = access[key]
+        if not isinstance(value, list) or not all(
+            isinstance(item, str) and item.strip() for item in value
+        ):
+            raise ValueError(f"{label}.{key} must be an array of non-empty paths")
+        for item in value:
+            validate_scope_path(item, f"{label}.{key}")
+    if access["read_paths"] and not access["read"]:
+        raise ValueError(f"{label}.read_paths requires read authority")
+    if access["write_paths"] and not access["edit"]:
+        raise ValueError(f"{label}.write_paths requires edit authority")
+
+
+def path_is_within(path: str, roots: list[str]) -> bool:
+    return any(root == "." or path == root or path.startswith(f"{root}/") for root in roots)
+
+
+def validate_contract_execution(manifest: dict[str, Any], contract: dict[str, Any]) -> None:
+    """Reject declared grader capabilities that exceed the task contract.
+
+    This validates a grader's declared access surface before its argv is run. It is
+    not an operating-system sandbox: a hostile executable still requires a host
+    sandbox and least-privilege credentials.
+    """
+    graders = manifest["graders"]
+    if graders and not contract["authority"]["read"]:
+        raise ValueError("execution contract does not authorize repository reads")
+    if graders and not contract["authority"]["test"]:
+        raise ValueError("execution contract does not authorize tests")
+    timeout_total = sum(grader["timeout_seconds"] for grader in graders)
+    if timeout_total > contract["budget"]["max_wall_seconds"]:
+        raise ValueError("declared grader timeout budget exceeds contract max_wall_seconds")
+
+    scope = contract["scope"]
+    included = [validate_scope_path(item, "scope.included") for item in scope["included"]]
+    excluded = [validate_scope_path(item, "scope.excluded") for item in scope["excluded"]]
+    frozen = [validate_scope_path(item, "scope.frozen") for item in scope["frozen"]]
+    for grader in graders:
+        grader_id = grader["id"]
+        access = grader.get("access")
+        if not isinstance(access, dict):
+            raise ValueError(
+                f"contract-bound grader {grader_id!r} requires a complete access declaration"
+            )
+        validate_access(access, f"grader {grader_id!r} access")
+        if not access["test"]:
+            raise ValueError(f"contract-bound grader {grader_id!r} must declare test authority")
+        for authority in AUTHORITY_KEYS:
+            if access[authority] and not contract["authority"][authority]:
+                raise ValueError(f"grader {grader_id!r} exceeds contract authority: {authority}")
+        for read_path in access["read_paths"]:
+            normalized = validate_scope_path(read_path, f"grader {grader_id!r} read path")
+            if not path_is_within(normalized, included) or path_is_within(normalized, excluded):
+                raise ValueError(f"grader {grader_id!r} read path is outside contract scope: {normalized}")
+        for write_path in access["write_paths"]:
+            normalized = validate_scope_path(write_path, f"grader {grader_id!r} write path")
+            if (
+                not path_is_within(normalized, included)
+                or path_is_within(normalized, excluded)
+                or path_is_within(normalized, frozen)
+            ):
+                raise ValueError(f"grader {grader_id!r} write path is outside mutable contract scope: {normalized}")
+
+
+def validate_grader(grader: dict[str, Any]) -> None:
+    """Validate every executable grader path, including future call sites."""
+    validate_keys(grader, GRADER_REQUIRED_KEYS, GRADER_ALLOWED_KEYS, "grader")
+    grader_id = grader["id"]
+    argv = grader["argv"]
+    timeout = grader["timeout_seconds"]
+    required = grader["required"]
+    if (
+        not isinstance(grader_id, str)
+        or not grader_id
+        or len(grader_id) > 80
+        or not GRADER_ID_PATTERN.fullmatch(grader_id)
+        or grader_id.upper() in WINDOWS_RESERVED_NAMES
+    ):
+        raise ValueError("grader id must be a safe, non-reserved 1-80 character identifier")
+    if not isinstance(argv, list) or not argv or not all(isinstance(item, str) and item for item in argv):
+        raise ValueError(f"grader {grader_id!r} requires a non-empty argv array of strings")
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0 or timeout > 86400:
+        raise ValueError(f"grader {grader_id!r} has an invalid timeout_seconds")
+    if not isinstance(required, bool):
+        raise ValueError(f"grader {grader_id!r} requires a boolean required field")
+    if "access" in grader:
+        access = grader["access"]
+        if not isinstance(access, dict):
+            raise ValueError(f"grader {grader_id!r} access must be an object")
+        validate_access(access, f"grader {grader_id!r} access")
+
+
+def validate_requirement(requirement: dict[str, Any], grader_ids: set[str]) -> None:
+    validate_keys(requirement, REQUIREMENT_KEYS, REQUIREMENT_KEYS, "requirement")
+    requirement_id = requirement["id"]
+    mapped_graders = requirement["grader_ids"]
+    if not isinstance(requirement_id, str) or not GRADER_ID_PATTERN.fullmatch(requirement_id):
+        raise ValueError("requirement id must be a safe identifier")
+    if not isinstance(requirement["description"], str) or not requirement["description"].strip():
+        raise ValueError(f"requirement {requirement_id!r} needs a description")
+    if not isinstance(mapped_graders, list) or not mapped_graders or not all(
+        isinstance(item, str) and item in grader_ids for item in mapped_graders
+    ):
+        raise ValueError(f"requirement {requirement_id!r} must map to declared graders")
+    if not isinstance(requirement["mandatory"], bool):
+        raise ValueError(f"requirement {requirement_id!r} requires a boolean mandatory field")
 
 
 def load_manifest(path: Path) -> dict[str, Any]:
@@ -86,37 +276,56 @@ def load_manifest(path: Path) -> dict[str, Any]:
         manifest = json.load(handle)
     if not isinstance(manifest, dict):
         raise ValueError("grader manifest must be a JSON object")
-    graders = manifest.get("graders")
+    validate_against_schema(manifest, "grader-manifest.schema.json")
+    validate_keys(manifest, {"version", "graders"}, MANIFEST_KEYS, "grader manifest")
+    if manifest["version"] != 2:
+        raise ValueError("grader manifest version must equal 2")
+    graders = manifest["graders"]
     if not isinstance(graders, list):
         raise ValueError("grader manifest requires a graders array")
     seen: set[str] = set()
+    graders_by_id: dict[str, dict[str, Any]] = {}
     for grader in graders:
         if not isinstance(grader, dict):
             raise ValueError("each grader must be an object")
-        grader_id = grader.get("id")
-        argv = grader.get("argv")
-        if (
-            not isinstance(grader_id, str)
-            or not grader_id
-            or len(grader_id) > 80
-            or not re.fullmatch(r"[A-Za-z0-9._-]+", grader_id)
-            or grader_id in seen
+        validate_grader(grader)
+        grader_id = grader["id"]
+        canonical_id = grader_id.casefold()
+        if canonical_id in seen:
+            raise ValueError("grader ids must be unique even on case-insensitive filesystems")
+        seen.add(canonical_id)
+        graders_by_id[grader_id] = grader
+    requirements = manifest.get("requirements", [])
+    if not isinstance(requirements, list):
+        raise ValueError("manifest requirements must be an array")
+    requirement_ids: set[str] = set()
+    for requirement in requirements:
+        if not isinstance(requirement, dict):
+            raise ValueError("each requirement must be an object")
+        validate_requirement(requirement, set(graders_by_id))
+        requirement_id = requirement["id"]
+        if requirement_id in requirement_ids:
+            raise ValueError("requirement ids must be unique")
+        requirement_ids.add(requirement_id)
+        if requirement["mandatory"] and any(
+            not graders_by_id[grader_id]["required"] for grader_id in requirement["grader_ids"]
         ):
-            raise ValueError("grader ids must be unique safe strings")
-        if not isinstance(argv, list) or not argv or not all(isinstance(item, str) for item in argv):
-            raise ValueError(f"grader {grader_id!r} requires a non-empty argv array")
-        timeout = grader.get("timeout_seconds", 300)
-        if not isinstance(timeout, (int, float)) or timeout <= 0 or timeout > 86400:
-            raise ValueError(f"grader {grader_id!r} has an invalid timeout_seconds")
-        seen.add(grader_id)
+            raise ValueError("mandatory requirements may map only to required graders")
+    artifacts = manifest.get("artifacts", [])
+    if not isinstance(artifacts, list) or not all(isinstance(item, str) and item for item in artifacts):
+        raise ValueError("manifest artifacts must be a non-empty-string array")
+    omitted_checks = manifest.get("omitted_checks", [])
+    if not isinstance(omitted_checks, list) or not all(isinstance(item, str) for item in omitted_checks):
+        raise ValueError("manifest omitted_checks must be a string array")
     return manifest
 
 
 def run_grader(grader: dict[str, Any], repo_root: Path, log_dir: Path) -> dict[str, Any]:
-    grader_id = str(grader["id"])
-    argv = [str(item) for item in grader["argv"]]
-    timeout = float(grader.get("timeout_seconds", 300))
-    required = bool(grader.get("required", True))
+    validate_grader(grader)
+    grader_id = grader["id"]
+    argv = grader["argv"]
+    timeout = float(grader["timeout_seconds"])
+    required = grader["required"]
     started = datetime.now(UTC)
     try:
         result = subprocess.run(
@@ -145,8 +354,11 @@ def run_grader(grader: dict[str, Any], repo_root: Path, log_dir: Path) -> dict[s
     finished = datetime.now(UTC)
     stdout = redact_secrets(stdout)
     stderr = redact_secrets(stderr)
-    log_path = log_dir / f"{grader_id}.log"
-    log_path.write_text(f"--- STDOUT ---\n{stdout}\n--- STDERR ---\n{stderr}\n", encoding="utf-8")
+    log_name = f"{hashlib.sha256(grader_id.encode('utf-8')).hexdigest()[:16]}.log"
+    log_path = ensure_contained(repo_root, log_dir / log_name)
+    log_path.write_text(
+        f"--- STDOUT ---\n{stdout}\n--- STDERR ---\n{stderr}\n", encoding="utf-8"
+    )
     return {
         "id": grader_id,
         "argv": argv,
@@ -165,13 +377,7 @@ def run_grader(grader: dict[str, Any], repo_root: Path, log_dir: Path) -> dict[s
 def hash_artifacts(manifest: dict[str, Any], repo_root: Path) -> tuple[list[dict[str, Any]], list[str]]:
     artifacts: list[dict[str, Any]] = []
     risks: list[str] = []
-    declared = manifest.get("artifacts", [])
-    if not isinstance(declared, list):
-        raise ValueError("manifest artifacts must be an array")
-    for item in declared:
-        relative = item.get("path") if isinstance(item, dict) else item
-        if not isinstance(relative, str) or not relative:
-            raise ValueError("each artifact must be a path string or object with path")
+    for relative in manifest.get("artifacts", []):
         path = ensure_contained(repo_root, rooted_path(repo_root, relative))
         if not path.is_file():
             risks.append(f"declared artifact missing: {relative}")
@@ -184,6 +390,23 @@ def hash_artifacts(manifest: dict[str, Any], repo_root: Path) -> tuple[list[dict
             }
         )
     return artifacts, risks
+
+
+def evaluate_requirements(
+    manifest: dict[str, Any], grader_results: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    results_by_id = {grader["id"]: grader for grader in grader_results}
+    evaluated: list[dict[str, Any]] = []
+    for requirement in manifest.get("requirements", []):
+        mapped = [results_by_id[grader_id] for grader_id in requirement["grader_ids"]]
+        if any(grader["status"] == "ABORTED" for grader in mapped):
+            status = "ABORTED"
+        elif all(grader["status"] == "PASS" for grader in mapped):
+            status = "PASS"
+        else:
+            status = "FAIL"
+        evaluated.append({**requirement, "status": status})
+    return evaluated
 
 
 def atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -199,7 +422,7 @@ def atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
             os.unlink(temp_name)
 
 
-def render_markdown(receipt: dict[str, Any]) -> str:
+def render_markdown(receipt: dict[str, Any], sidecar_name: str) -> str:
     lines = [
         "# 1000x Engineer Run Receipt",
         "",
@@ -236,11 +459,17 @@ def render_markdown(receipt: dict[str, Any]) -> str:
             "- This receipt is an auditable evidence summary, not cryptographic proof of correctness.",
             "- Checks not listed in the manifest remain omitted.",
             "",
-            f"**Receipt JSON SHA-256:** `{receipt.get('receipt_sha256', 'computed after write')}`",
+            "## Integrity",
+            "",
+            f"The authoritative SHA-256 for the final JSON receipt is stored in `{sidecar_name}`.",
             "",
         ]
     )
     return "\n".join(lines)
+
+
+def empty_manifest() -> dict[str, Any]:
+    return {"version": 2, "graders": [], "requirements": [], "artifacts": [], "omitted_checks": []}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -250,64 +479,65 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output-dir", default=".")
     parser.add_argument("--spec", default="1000x Engineer v1.0 contract")
     parser.add_argument("--scope", default="workspace")
-    parser.add_argument(
-        "--test-cmd", action="append", default=[], help="Legacy shell command; requires --allow-shell"
-    )
-    parser.add_argument(
-        "--allow-shell", action="store_true", help="Explicitly opt into legacy shell commands"
-    )
+    parser.add_argument("--contract", help="Optional strict execution-contract JSON within the repository")
     args = parser.parse_args(argv)
 
     repo_root = Path(args.repo_root).resolve()
-    output_dir = ensure_contained(repo_root, rooted_path(repo_root, args.output_dir))
-    output_dir.mkdir(parents=True, exist_ok=True)
-    log_dir = ensure_contained(repo_root, output_dir / ".evidence" / "logs")
-    log_dir.mkdir(parents=True, exist_ok=True)
+    if not repo_root.is_dir():
+        print(f"[ABORTED] repository root is not a directory: {repo_root}", file=sys.stderr)
+        return 2
     try:
-        if args.manifest:
-            manifest = load_manifest(ensure_contained(repo_root, rooted_path(repo_root, args.manifest)))
-        elif args.test_cmd and args.allow_shell:
-            manifest = {
-                "version": 2,
-                "graders": [
-                    {
-                        "id": item.split("::", 1)[0].strip(),
-                        "argv": [item.split("::", 1)[1].strip()],
-                        "required": True,
-                    }
-                    for item in args.test_cmd
-                    if "::" in item
-                ],
-            }
-            for grader in manifest["graders"]:
-                command = grader["argv"][0]
-                grader["argv"] = (
-                    ["cmd.exe", "/d", "/s", "/c", command] if os.name == "nt" else ["/bin/sh", "-c", command]
-                )
-        else:
-            manifest = {"version": 2, "graders": []}
+        output_dir = ensure_contained(repo_root, rooted_path(repo_root, args.output_dir))
+        output_dir.mkdir(parents=True, exist_ok=True)
+        log_dir = ensure_contained(repo_root, output_dir / ".evidence" / "logs")
+        log_dir.mkdir(parents=True, exist_ok=True)
+        manifest = (
+            load_manifest(ensure_contained(repo_root, rooted_path(repo_root, args.manifest)))
+            if args.manifest
+            else empty_manifest()
+        )
+        contract_path = (
+            ensure_contained(repo_root, rooted_path(repo_root, args.contract)) if args.contract else None
+        )
+        contract = load_contract(contract_path) if contract_path else None
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"[ABORTED] invalid grader manifest or path: {exc}", file=sys.stderr)
         return 2
 
-    grader_results = [run_grader(grader, repo_root, log_dir) for grader in manifest["graders"]]
-    required = [grader for grader in grader_results if grader["required"]]
-    if not required:
-        status = "INSUFFICIENT_EVIDENCE"
-    elif any(grader["status"] == "ABORTED" for grader in required):
-        status = "ABORTED"
-    elif all(grader["status"] == "PASS" for grader in required):
-        status = "VERIFIED"
-    else:
-        status = "FAILED"
+    if not args.spec.strip() or not args.scope.strip():
+        print("[ABORTED] spec and scope must be non-empty", file=sys.stderr)
+        return 2
+    if contract:
+        try:
+            validate_contract_execution(manifest, contract)
+        except ValueError as exc:
+            print(f"[ABORTED] execution contract rejected grader manifest: {exc}", file=sys.stderr)
+            return 2
 
+    grader_results = [run_grader(grader, repo_root, log_dir) for grader in manifest["graders"]]
+    requirement_results = evaluate_requirements(manifest, grader_results)
+    required = [grader for grader in grader_results if grader["required"]]
+    mandatory_requirements = [item for item in requirement_results if item["mandatory"]]
     try:
         artifact_entries, artifact_risks = hash_artifacts(manifest, repo_root)
     except (OSError, ValueError) as exc:
         print(f"[ABORTED] invalid artifact declaration: {exc}", file=sys.stderr)
         return 2
+    if not required:
+        status = "INSUFFICIENT_EVIDENCE"
+    elif any(grader["status"] == "ABORTED" for grader in required) or any(
+        item["status"] == "ABORTED" for item in mandatory_requirements
+    ):
+        status = "ABORTED"
+    elif all(grader["status"] == "PASS" for grader in required) and all(
+        item["status"] == "PASS" for item in mandatory_requirements
+    ) and not artifact_risks:
+        status = "VERIFIED"
+    else:
+        status = "FAILED"
     receipt_path = ensure_contained(repo_root, output_dir / "RUN_RECEIPT.json")
     markdown_path = ensure_contained(repo_root, output_dir / "RUN_RECEIPT.md")
+    sidecar_path = receipt_path.with_suffix(receipt_path.suffix + ".sha256")
     receipt: dict[str, Any] = {
         "schema_version": "2.0",
         "receipt_id": f"receipt-{uuid.uuid4().hex}",
@@ -318,11 +548,12 @@ def main(argv: list[str] | None = None) -> int:
         "repository": {
             "root": str(repo_root),
             "commit": git_value(repo_root, "rev-parse", "HEAD", default="uncommitted/no-git"),
-            "branch": git_value(repo_root, "branch", "--show-current", default="unknown"),
+            "branch": git_value(repo_root, "branch", "--show-current", default="detached-or-unknown")
+            or "detached-or-unknown",
             "dirty": bool(git_value(repo_root, "status", "--porcelain", default="")),
         },
         "environment": {"python": sys.version.split()[0], "platform": platform.platform()},
-        "requirements": manifest.get("requirements", []),
+        "requirements": requirement_results,
         "graders": grader_results,
         "artifacts": artifact_entries,
         "residual_risks": [
@@ -331,12 +562,25 @@ def main(argv: list[str] | None = None) -> int:
         ],
         "omitted_checks": manifest.get("omitted_checks", []),
     }
+    if contract and contract_path:
+        receipt["contract"] = {
+            "path": str(contract_path.relative_to(repo_root)).replace(os.sep, "/"),
+            "sha256": sha256_file(contract_path),
+            "scope": contract["scope"],
+            "authority": contract["authority"],
+            "budget": contract["budget"],
+        }
+    try:
+        validate_against_schema(receipt, "receipt.schema.json")
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"[ABORTED] receipt schema validation failed: {exc}", file=sys.stderr)
+        return 2
     atomic_write_json(receipt_path, receipt)
-    receipt["receipt_sha256"] = sha256_file(receipt_path)
-    atomic_write_json(receipt_path, receipt)
-    markdown_path.write_text(render_markdown(receipt), encoding="utf-8", newline="\n")
-    receipt_path.with_suffix(receipt_path.suffix + ".sha256").write_text(
+    sidecar_path.write_text(
         f"{sha256_file(receipt_path)}  {receipt_path.name}\n", encoding="utf-8", newline="\n"
+    )
+    markdown_path.write_text(
+        render_markdown(receipt, sidecar_path.name), encoding="utf-8", newline="\n"
     )
     print(f"[+] JSON receipt: {receipt_path}")
     print(f"[+] Markdown receipt: {markdown_path}")

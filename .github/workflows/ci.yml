@@ -26,5 +26,7 @@ jobs:
       - run: python -m pytest
       - run: python -m ruff check .
       - run: python -m mypy plugins/1000x-engineer/skills/1000x-engineer/scripts scripts tests
+      - run: python scripts/sync_compatibility_mirrors.py --check
+      - run: python plugins/1000x-engineer/skills/1000x-engineer/scripts/validate_contract.py plugins/1000x-engineer/skills/1000x-engineer/resources/task-contract.example.json
       - run: python plugins/1000x-engineer/skills/1000x-engineer/scripts/validate_skill.py plugins/1000x-engineer/skills/1000x-engineer
       - run: python scripts/validate_plugin.py plugins/1000x-engineer

@@ -4,7 +4,24 @@
     {"id": "tests", "description": "All mandatory regression tests pass", "grader_ids": ["pytest"], "mandatory": true}
   ],
   "graders": [
-    {"id": "pytest", "argv": ["python", "-m", "pytest", "tests"], "timeout_seconds": 300, "required": true}
+    {
+      "id": "pytest",
+      "argv": ["python", "-m", "pytest", "tests"],
+      "timeout_seconds": 300,
+      "required": true,
+      "access": {
+        "read": true,
+        "edit": false,
+        "test": true,
+        "network": false,
+        "credentials": false,
+        "commit": false,
+        "merge": false,
+        "deploy": false,
+        "read_paths": ["tests"],
+        "write_paths": []
+      }
+    }
   ],
   "omitted_checks": ["Deployment and production smoke tests are not run locally"]
 }

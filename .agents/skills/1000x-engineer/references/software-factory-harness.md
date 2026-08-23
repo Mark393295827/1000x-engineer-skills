@@ -38,7 +38,7 @@ A **Run Receipt** is a structured summary produced after a verification run. Its
 - **Grading Matrix**: Each grader executed with command, status, duration, and result details.
 - **Artifacts Generated**: Modified files, test outputs, complete logs, and hashes where required.
 
-The current helper records only a subset: timestamp, spec, scope, short Git SHA, command, duration, exit code, and truncated stdout/stderr.
+The v2 helper generates a machine-readable JSON receipt (`RUN_RECEIPT.json`), an authoritative `.sha256` checksum sidecar, and a sanitized Markdown rendering capturing execution environment, git status, requirement traceability, and artifact digests.
 
 ---
 

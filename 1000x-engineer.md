@@ -44,7 +44,7 @@ run_id: "run-20260817-1000x-gold-upgrade"
 ^1000x-engineer-core-thesis
 
 > [!INFO] Temporal Scope
-> Valid as of **2026-08-19** · freshness tier **stable** · next review **2027-08-19**.
+> Valid as of **2026-08-17** · freshness tier **stable** · next review **2027-08-17**.
 
 ---
 
@@ -77,8 +77,8 @@ flowchart TD
 
     subgraph Layer2 ["2. Autonomous Software Factory (Model & Resolver Router)"]
         R["Intelligent Model Router"]
-        S1["Flash/Lite Subagents (Rapid Drafts, Scaffolding, Refactors)"]
-        S2["Opus/Pro/Thinking Subagents (Deep Architecture, Algorithmic Deduction)"]
+        S1["T1 Fast Agents (Rapid Drafts, Scaffolding, Refactors)"]
+        S2["T3 Reasoning Agents (Deep Architecture, Algorithmic Deduction)"]
         S3["Deterministic Tool Resolvers (Commands, Linters, Type Checkers)"]
         H2 --> R
         R --> S1 & S2 & S3
@@ -113,7 +113,7 @@ flowchart TD
 - **Mechanism**: Because agent marginal execution costs approach zero, engineers can concurrently orchestrate hundreds of subagents to build database engines, frontends, test suites, telemetry dashboards, and internationalization in parallel, permanently eradicating technical debt black holes. (Source: [[sources/2026-06/2026-06-21-yc-garry-tan-diana-hu-stanford-cs153#^yc-boil-the-ocean]])
 
 ### 4. Adaptive Compute & Model Routing
-- **Mechanism**: Route low-complexity CRUD and text conversions to lightweight models (Flash/Haiku) instantly; dynamically assign deep reasoning models (Opus/Pro/Thinking) to core architecture, concurrency, and algorithmic deduction, optimizing performance, quality, and token budgets. (Source: [[sources/2026-08/2026-08-11-stanford-cs153-ai-native-company#^cs153-systems]])
+- **Mechanism**: Route deterministic work to T0 tools, routine bounded work to T1/T2 agents, deep architecture and concurrency work to T3 reasoning agents, and final challenge to T4 independent evaluators. Hosts map these capabilities to their own available models and tools. (Source: [[sources/2026-08/2026-08-11-stanford-cs153-ai-native-company#^cs153-systems]])
 
 ---
 
@@ -123,7 +123,7 @@ flowchart TD
 | :--- | :--- | :--- | :--- |
 | **Underlying Assumption** | Human brain is the sole code generator and reviewer | AI is a code completion assistant; human drives line-by-line | Agent swarms are software workers; human is factory architect and judge |
 | **Core Activity** | Keyboard typing, syntax lookups, environment config, local debug | Tab code completion, interactive chat prompt queries | Authoring Markdown specs, configuring Eval pipelines, running autonomous loops |
-| **Leverage Source** | Personal syntax memory, IDE hotkeys, algorithmic knowledge | Block-level generation, SaaS boilerplate libraries | Multi-surface agent orchestration (Antigravity/Codex), Run Receipts, Skillify flywheel |
+| **Leverage Source** | Personal syntax memory, IDE hotkeys, algorithmic knowledge | Block-level generation, SaaS boilerplate libraries | Host-neutral agent orchestration, Run Receipts, Skillify flywheel |
 | **Quality Assurance** | Manual visual code reviews (prone to subtle logical bugs) | Human reading AI snippet diffs (high cognitive fatigue) | **Risk-matched deterministic checks, host-provided isolation, reviewed Run Receipts, and human approval where required** |
 | **Physical Bottleneck** | ⚠️ Finger typing speed & mental working memory (8h/day) | ⚠️ Prompt fatigue & context window overflow | ⚠️ Orchestration Tax (human capacity to review system-level specs) |
 

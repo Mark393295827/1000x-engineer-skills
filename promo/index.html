@@ -199,20 +199,30 @@
         <section class="scene" data-index="6">
           <span class="scene-tag">SCENE 07 // COMMAND SURFACE</span>
           <h1 class="scene-title">Experience the 1000x Factory</h1>
-          <p class="scene-desc">Launch the 5-Step SOP simulation or deploy the skill directly to your AI engineering agent.</p>
+          <p class="scene-desc">Launch the 5-Step SOP simulation, choose a task archetype, or type a custom command.</p>
           <div class="interactive-terminal-view">
             <div class="cli-box">
-              <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.4rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.4rem;">
                 <span style="color:var(--text-muted);">autonomous_factory_commander — bash</span>
-                <span style="color:var(--neon-green);">READY</span>
+                <span id="sim-status-badge" class="badge-status" style="color:var(--neon-green); font-size:0.75rem; font-weight:700;">● READY</span>
               </div>
-              <div id="sim-terminal-output" style="min-height:160px; max-height:160px; overflow-y:auto; display:flex; flex-direction:column; gap:0.3rem;">
-                <div style="color:var(--text-muted);">Click "Run Autonomous SOP" below to trigger simulation...</div>
+              <div id="sim-terminal-output" role="log" aria-live="polite" style="min-height:160px; max-height:160px; overflow-y:auto; display:flex; flex-direction:column; gap:0.3rem;">
+                <div style="color:var(--text-muted);">Click a preset below or press "▶ Run Autonomous SOP" to simulate execution...</div>
+              </div>
+              <div class="cli-input-row" style="display:flex; align-items:center; gap:0.5rem; border-top:1px solid rgba(255,255,255,0.1); padding-top:0.5rem;">
+                <span class="cli-prompt">$</span>
+                <input type="text" id="cli-input" class="cli-input" placeholder="Type command or choose preset (e.g., factory run --task 'Migrate Auth')" />
               </div>
             </div>
             <div class="action-buttons">
+              <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                <button class="btn-icon btn-preset" data-task="auth-refactor">⚡ Auth Refactor</button>
+                <button class="btn-icon btn-preset" data-task="security-fix">🛡️ Security Fix</button>
+                <button class="btn-icon btn-preset" data-task="e2e-matrix">🧪 E2E Matrix</button>
+              </div>
               <button id="btn-run-sim" class="btn-primary">▶ Run Autonomous SOP</button>
-              <a href="https://github.com/Mark393295827/1000x-engineer-skills" target="_blank" class="btn-icon active" style="text-align:center; padding:0.9rem; text-decoration:none; font-weight:700;">
+              <button id="btn-reset-sim" class="btn-icon" style="text-align:center;">🔄 Reset Terminal</button>
+              <a href="https://github.com/Mark393295827/1000x-engineer-skills" target="_blank" class="btn-icon active" style="text-align:center; padding:0.85rem; text-decoration:none; font-weight:700;">
                 ⭐ View on GitHub
               </a>
             </div>

@@ -1,24 +1,71 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "1000x Engineer Grader Manifest v2",
   "type": "object",
   "required": ["version", "graders"],
   "properties": {
     "version": {"const": 2},
-    "requirements": {"type": "array"},
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "description", "grader_ids", "mandatory"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[A-Za-z0-9._-]{1,80}$"},
+          "description": {"type": "string", "minLength": 1},
+          "grader_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "pattern": "^[A-Za-z0-9._-]{1,80}$"}
+          },
+          "mandatory": {"type": "boolean"}
+        },
+        "additionalProperties": false
+      }
+    },
     "graders": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "argv"],
+        "required": ["id", "argv", "timeout_seconds", "required"],
         "properties": {
-          "id": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
-          "argv": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+          "id": {"type": "string", "pattern": "^[A-Za-z0-9._-]{1,80}$"},
+          "argv": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "minLength": 1}
+          },
           "timeout_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 86400},
-          "required": {"type": "boolean"}
+          "required": {"type": "boolean"},
+          "access": {
+            "type": "object",
+            "required": ["read", "edit", "test", "network", "credentials", "commit", "merge", "deploy", "read_paths", "write_paths"],
+            "properties": {
+              "read": {"type": "boolean"},
+              "edit": {"type": "boolean"},
+              "test": {"type": "boolean"},
+              "network": {"type": "boolean"},
+              "credentials": {"type": "boolean"},
+              "commit": {"type": "boolean"},
+              "merge": {"type": "boolean"},
+              "deploy": {"type": "boolean"},
+              "read_paths": {"type": "array", "items": {"type": "string", "minLength": 1}},
+              "write_paths": {"type": "array", "items": {"type": "string", "minLength": 1}}
+            },
+            "additionalProperties": false
+          }
         },
-        "additionalProperties": true
+        "additionalProperties": false
       }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "omitted_checks": {
+      "type": "array",
+      "items": {"type": "string"}
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }
