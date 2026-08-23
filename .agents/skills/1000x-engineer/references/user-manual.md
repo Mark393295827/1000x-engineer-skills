@@ -275,12 +275,12 @@ Local and targeted checks belong in this repair loop. The receipt helper in Step
 
 ### Step 5 — Run final graders, review the receipt, and decide whether to Skillify
 
-The receipt helper **executes the supplied commands again** from the current working directory and creates or replaces the output file. Before running it:
+The receipt helper **executes the supplied argv arrays again** from the verified repository root and creates `RUN_RECEIPT.json`, `RUN_RECEIPT.md`, and a JSON hash. Before running it:
 
-- Use only trusted, reviewed grader strings; they execute through the platform command shell—typically `cmd.exe` on Windows and `/bin/sh` on POSIX—not necessarily the PowerShell or Bash session that launched the helper. Use portable command syntax or explicitly invoke a reviewed script with `pwsh -File`, `powershell -File`, or `bash` when required.
-- Supply every meaningful grader explicitly. With none, the weak fallback checks only the Python version.
-- Confirm that replacing the chosen output path is acceptable.
-- Expect a 300-second timeout per grader and 2,000-character stdout/stderr truncation in the receipt; preserve complete logs separately.
+- Use a JSON manifest with `argv` arrays. The default execution path is `subprocess.run(..., shell=False)`.
+- Supply every meaningful grader explicitly. With none, the status is `INSUFFICIENT_EVIDENCE`, never `VERIFIED`.
+- Confirm that replacing the chosen output path is acceptable; the JSON receipt is the machine-readable source.
+- Expect a 300-second timeout per grader and a 2,000-character Markdown preview; complete redacted logs are stored under `.evidence/logs`.
 
 **Run in PowerShell from the target repository root, resolving either common user-scope installation:**
 
@@ -291,7 +291,7 @@ $skillRoot = @(
 ) | Where-Object { Test-Path -LiteralPath (Join-Path $_ "SKILL.md") } | Select-Object -First 1
 if (-not $skillRoot) { throw "1000x-engineer is not installed in a recognized user-scope location" }
 $receiptScript = Join-Path $skillRoot "scripts\generate_run_receipt.py"
-python $receiptScript --spec "Idempotent-Webhooks" --scope "services/webhooks" --output "RUN_RECEIPT.md" --test-cmd "Regression Tests::python -m pytest tests/unit/test_webhooks.py -q" --test-cmd "Required Static Gates::ruff check src/webhooks tests"
+python $receiptScript --repo-root (Get-Location) --manifest "grader-manifest.json" --spec "Idempotent-Webhooks" --scope "services/webhooks"
 ```
 
 Replace the sample graders with the project’s required native commands. Omit the Ruff grader if Ruff is not a declared project gate. If you are working inside this skill’s source checkout, the helper is also available at `skills/1000x-engineer/scripts/generate_run_receipt.py`; resolve that script path before changing to the target repository root.
@@ -302,7 +302,7 @@ On macOS or Linux, resolve the same two locations:
 skill_root="$HOME/.agents/skills/1000x-engineer"
 test -f "$skill_root/SKILL.md" || skill_root="$HOME/.codex/skills/1000x-engineer"
 test -f "$skill_root/SKILL.md" || { echo "1000x-engineer is not installed" >&2; exit 1; }
-python3 "$skill_root/scripts/generate_run_receipt.py" --spec "Idempotent-Webhooks" --scope "services/webhooks" --output "RUN_RECEIPT.md" --test-cmd "Regression Tests::python3 -m pytest tests/unit/test_webhooks.py -q"
+python3 "$skill_root/scripts/generate_run_receipt.py" --repo-root "$PWD" --manifest "grader-manifest.json" --spec "Idempotent-Webhooks" --scope "services/webhooks"
 ```
 
 Review the receipt against the contract, inspect omitted checks and residual risks, and apply the required human approval before merge or deployment.
@@ -368,19 +368,20 @@ Supported arguments:
 | --- | --- |
 | `--spec` | Contract or task name. |
 | `--scope` | Target module or path. |
-| `--output` | Receipt path; defaults to `RUN_RECEIPT.md` and is created or replaced. |
-| `--test-cmd "Name::command"` | Adds one grader. Repeat for multiple graders. |
+| `--manifest` | JSON manifest containing `version: 2` and grader objects with `id`, `argv`, `timeout_seconds`, and `required`. |
+| `--repo-root` | Verified repository root used as grader `cwd`; defaults to the current directory. |
+| `--output-dir` | Contained output directory for JSON, Markdown, hash, and redacted logs. |
+| `--allow-shell --test-cmd "Name::command"` | Explicit legacy compatibility mode. Never use with untrusted input. |
 
 Current behavior and limits:
 
-- Each grader is a shell command with a 300-second timeout.
+- Each manifest grader is an argument vector with a 300-second default timeout and `shell=False`.
 - Commands run sequentially and pass only when their exit code is zero.
-- If no `--test-cmd` is supplied, the fallback checks only the Python version. That result is not feature verification.
-- Receipt stdout and stderr are truncated to 2,000 characters per grader. Preserve full logs separately.
-- The script records the current Git short SHA when available, but it does not record dirty-state details.
-- The output is ordinary editable Markdown. It is an evidence snapshot, not cryptographic proof or tamper protection.
-- Spec, scope, grader names, commands, and diagnostic output are inserted without Markdown escaping. Pipes can break the matrix and triple backticks can close a log fence. Treat generated receipts as untrusted text, inspect them before rendering or sharing, and do not publish unsanitized output from untrusted tools or tests.
-- Grader strings run through the platform command shell—typically `cmd.exe` on Windows and `/bin/sh` on POSIX. Use only trusted, reviewed commands; never interpolate untrusted prompt or payload text. PowerShell- or Bash-specific syntax must be placed in a reviewed script or invoked through that shell explicitly.
+- If no required grader is supplied, the status is `INSUFFICIENT_EVIDENCE`.
+- The JSON receipt records schema version, repository commit/branch/dirty state, environment, graders, hashes, omitted checks, and residual risks.
+- The Markdown rendering escapes pipes/backticks and redacts common secrets. It is an editable evidence summary, not cryptographic proof or tamper protection.
+- A required grader failure is `FAILED`; an execution error is `ABORTED`; all required graders passing is `VERIFIED`.
+- Shell commands remain available only through explicit `--allow-shell` legacy mode, which wraps the reviewed string in a shell argv. Do not interpolate untrusted input.
 
 If a check takes more than five minutes, intentionally shard it into truthful subcommands that fit the limit or run and preserve it separately, then disclose that it is not captured by this helper.
 
@@ -388,9 +389,9 @@ If a check takes more than five minutes, intentionally shard it into truthful su
 
 Supported required arguments are `--name` and `--desc`. Optional arguments describe the title, problem, root cause, solution, and output directory.
 
-Despite its name, the current script does not parse a transcript or log file. It scaffolds a skill from the CLI fields you provide, creates empty support directories, and writes `SKILL.md`. It can overwrite an existing skill’s `SKILL.md`; inspect the destination and use version control before running it.
+Despite its name, the script does not parse a transcript or log file. It scaffolds a CANDIDATE package from the CLI fields you provide, including `SKILL.md`, regression and activation evals, `regression.yaml`, and `STATUS`. It refuses to overwrite an existing target unless `--overwrite` is explicit.
 
-The script does not enforce kebab-case or guarantee that `--name` remains inside `--out-dir`. Accept only a simple name matching `^[a-z0-9]+(-[a-z0-9]+)*$`; reject path separators, drive prefixes, `.` segments, and absolute paths.
+The script enforces kebab-case (`^[a-z0-9]+(?:-[a-z0-9]+)*$`, 1–64 characters) and guarantees that the resolved target remains inside `--out-dir`.
 
 On Windows, first confirm that the target skill directory does not exist, resolve the installed skill root, then run:
 
@@ -411,7 +412,7 @@ The generated package is a candidate. Review it, add a regression eval, test pos
 
 ## 7. What a passing receipt proves
 
-A `PASS` receipt proves only that every grader actually executed returned exit code zero during that run. If no `--test-cmd` was supplied, that can mean only the injected Python-version fallback passed; it says nothing about the task.
+A `VERIFIED` receipt proves only that every required manifest grader actually executed and returned exit code zero during that run. An empty or optional-only manifest is `INSUFFICIENT_EVIDENCE`, not verification.
 
 It does not, by itself, prove:
 
