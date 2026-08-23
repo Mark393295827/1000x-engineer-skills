@@ -1,0 +1,5 @@
+version: 1
+status: REVIEWED
+required_graders:
+  - python -m pytest tests
+  - python plugins/1000x-engineer/skills/1000x-engineer/scripts/validate_skill.py plugins/1000x-engineer/skills/1000x-engineer

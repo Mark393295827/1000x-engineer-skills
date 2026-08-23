@@ -12,6 +12,8 @@ description: >-
 
 > **Core Thesis:** The 1000x Engineer operates as the **Commander and Harness Architect** of an Autonomous Software Factory. Instead of manually writing and line-by-line debugging code, you write high-density Markdown skill contracts (Skills as Code), enforce deterministic test harnesses (Evals First), orchestrate multi-agent parallel loops ("Boil the Ocean"), audit structured Run Receipts, and distill reusable execution patterns into compounding skills.
 
+Evidence precedes mutation: no completion claim is stronger than the declared graders and their receipt.
+
 ---
 
 ## User Documentation

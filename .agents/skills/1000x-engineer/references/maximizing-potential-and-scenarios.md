@@ -222,9 +222,9 @@ More iterations do not compensate for a missing contract or a weak reproducer.
 
 ## 9. Strengthen the receipt trust model
 
-The bundled [`generate_run_receipt.py`](../scripts/generate_run_receipt.py) is a useful local evidence-summary generator. It records executed commands, exit codes, durations, truncated diagnostic output, timestamp, and a Git short SHA. With no `--test-cmd`, it injects only a Python-version environment check.
+The bundled [`generate_run_receipt.py`](../scripts/generate_run_receipt.py) is a v2 evidence generator. It records manifest graders, exit codes, durations, repository revision/dirty state, redacted logs, artifact hashes, and omitted checks. With no required grader, it reports `INSUFFICIENT_EVIDENCE`.
 
-Its `PASS` status means only that every grader actually executed—including the weak fallback when applicable—exited zero. For material work, require explicit graders and augment the receipt with:
+Its `VERIFIED` status means only that every required grader actually executed and exited zero. For material work, require explicit graders and augment the receipt with:
 
 - Full revision and dirty-state information.
 - Environment and dependency fingerprints.
@@ -238,15 +238,15 @@ Its `PASS` status means only that every grader actually executed—including the
 
 The generated Markdown file is editable. If immutability matters, store it in a signed commit, attach hashes or signatures, and preserve it in controlled CI or write-once storage.
 
-Never pass untrusted text as a grader command. The current helper executes each string through the platform command shell—typically `cmd.exe` on Windows and `/bin/sh` on POSIX—not necessarily the interactive shell that launched it.
+In v1.0, the default helper executes manifest `argv` arrays with `shell=False`. Legacy shell strings require explicit `--allow-shell` and must be reviewed.
 
-Treat receipt content as untrusted text as well. The helper does not escape Markdown table cells or code fences, so grader metadata or output containing pipes or triple backticks can corrupt the rendered document. Inspect and sanitize before rendering or sharing.
+Receipt metadata and previews are escaped for Markdown and common secrets are redacted. Complete logs remain under `.evidence/logs`; review them and treat the receipt as evidence, not proof.
 
 ## 10. Make Skillify compound knowledge
 
 Use [`skillify-flywheel.md`](./skillify-flywheel.md) to decide when a discovery is worth packaging. Strong candidates are recurring failure patterns, environment/tool quirks, reusable architectures, and previously hidden domain invariants.
 
-The current [`extract_skill_trace.py`](../scripts/extract_skill_trace.py) is a scaffolder. It does not parse a transcript and does not create a regression eval. After running it:
+The current [`extract_skill_trace.py`](../scripts/extract_skill_trace.py) is a bounded scaffolder. It does not parse a transcript, but it creates regression and activation eval placeholders, a lifecycle `STATUS`, and refuses unsafe names or overwrites by default. After running it:
 
 1. Remove temporary names, paths, IDs, and one-off details.
 2. Define precise positive and negative activation conditions.

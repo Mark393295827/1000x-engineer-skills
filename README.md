@@ -1,4 +1,4 @@
-# 1000x Engineer: Autonomous Software Factory & Skills
+# 1000x Engineer v1.0 — Verified Autonomous Engineering Control Plane
 
 ![1000x Engineer Command Center](promo/assets/banner.jpg)
 
@@ -9,13 +9,15 @@
 
 ## Overview
 
-This repository implements the **1000x Engineer & Autonomous Software Factory** paradigm. It equips AI engineering workflows with:
+This repository implements a **verified autonomous engineering control plane**. It equips AI engineering workflows with:
 
 1. **Skills as Code**: Agent-consumable Markdown contracts defining typed schemas, invariants, and MECE boundaries for compatible hosts.
 2. **Evals First**: Strict test harnesses and Definition of Done (DoD) assertion gates prior to code modification.
 3. **Autonomous Loops**: Closed-loop execution (`Trigger -> Execute -> Verify -> Accept / Commit if authorized`) with host-provided isolation when available.
 4. **Adaptive Compute Routing**: Dynamic allocation of subagent models (Flash/Lite for syntax & boilerplate, Thinking/Pro for complex architecture).
-5. **Run Receipts & Skillify**: Structured verification summaries (`RUN_RECEIPT.md`) and guided distillation of reusable failure patterns into skills.
+5. **Run Receipts & Skillify**: Machine-readable `RUN_RECEIPT.json`, safe Markdown rendering, and bounded distillation of reusable failure patterns into candidate skills.
+
+The plugin-native source of truth is `plugins/1000x-engineer`. The historical `.agents/skills` and `skills` paths remain compatibility mirrors and must not become independent sources.
 
 ---
 
@@ -35,9 +37,11 @@ The documentation treats “1000x” as a leverage target rather than a guarante
 ├── 1000x-engineer.md                  # Core theoretical document & specification
 ├── .gitignore                         # Standard git ignore rules
 ├── README.md                          # Repository documentation & usage playbook
+├── plugins/1000x-engineer/            # Canonical Codex plugin
+│   ├── .codex-plugin/plugin.json
+│   └── skills/1000x-engineer/          # Canonical skill package
 ├── .agents/
-│   └── skills/
-│       └── 1000x-engineer/            # Antigravity skill package
+│   └── skills/1000x-engineer/           # Compatibility mirror
 │           ├── SKILL.md               # Main 5-Step SOP entry point
 │           ├── references/            # Deep-dive guides & architectural manuals
 │           │   ├── user-manual.md
@@ -53,8 +57,7 @@ The documentation treats “1000x” as a leverage target rather than a guarante
 │           └── scripts/               # Automation scripts (receipts & skill distillation)
 │               ├── generate_run_receipt.py
 │               └── extract_skill_trace.py
-└── skills/
-    └── 1000x-engineer/                # Standard workspace skills mirror
+└── skills/1000x-engineer/              # Compatibility mirror
 ```
 
 ---
@@ -106,14 +109,10 @@ Launch the `Trigger -> Execute -> Verify -> Accept / Commit if authorized` loop:
 - When the host supports agent loops, feed the relevant failing assertion, trace, and code context to a bounded fixer loop; stop on repeated signatures or missing authority.
 
 ### Step 5: Issue Run Receipt & Skillify
-Generate a structured verification summary. The helper reruns the supplied commands and writes editable Markdown; review the [manual’s evidence boundaries](skills/1000x-engineer/references/user-manual.md#7-what-a-passing-receipt-proves):
+Generate a structured verification summary from a JSON grader manifest. Each `argv` array is executed with `shell=False`; zero required graders can never produce `VERIFIED`:
 ```bash
-python skills/1000x-engineer/scripts/generate_run_receipt.py \
-  --spec "Multi-Currency-Webhooks" \
-  --scope "services/payments" \
-  --test-cmd "Unit Tests::pytest tests/unit/test_payments.py" \
-  --test-cmd "Type Check::mypy --strict src/payments" \
-  --test-cmd "Linter::ruff check src/payments"
+python plugins/1000x-engineer/skills/1000x-engineer/scripts/generate_run_receipt.py \
+  --manifest plugins/1000x-engineer/skills/1000x-engineer/resources/grader-manifest.example.json
 ```
 If a genuinely reusable failure pattern was solved, scaffold a candidate skill, then add its regression eval and trigger tests:
 ```bash
@@ -122,7 +121,8 @@ python skills/1000x-engineer/scripts/extract_skill_trace.py \
   --desc "Use when handling concurrent duplicate webhook deliveries in distributed queue workers." \
   --problem "Duplicate webhooks processed simultaneously before DB transaction committed" \
   --root-cause "Missing Redis distributed lock before DB query" \
-  --solution "Acquire a bounded lock with TTL; re-read status; release in finally; run the concurrency regression test"
+  --solution "Acquire a bounded lock with TTL; re-read status; release in finally; run the concurrency regression test" \
+  --out-dir .agents/skills
 ```
 
 ---
@@ -149,5 +149,6 @@ python skills/1000x-engineer/scripts/extract_skill_trace.py \
 
 ## Included Automation Scripts
 
-- `skills/1000x-engineer/scripts/generate_run_receipt.py`: Runs explicitly supplied commands and writes their exit-code evidence to `RUN_RECEIPT.md`.
-- `skills/1000x-engineer/scripts/extract_skill_trace.py`: Scaffolds distilled problem and solution fields into a structured skill template.
+- `plugins/1000x-engineer/skills/1000x-engineer/scripts/generate_run_receipt.py`: Runs manifest graders with secure argv execution and writes JSON/Markdown receipts plus hashes.
+- `plugins/1000x-engineer/skills/1000x-engineer/scripts/extract_skill_trace.py`: Scaffolds a bounded CANDIDATE skill with path and overwrite protections.
+- `plugins/1000x-engineer/skills/1000x-engineer/scripts/validate_skill.py`: Validates lifecycle files and frontmatter before activation.

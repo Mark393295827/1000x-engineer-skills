@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "requirements": [
+    {"id": "tests", "description": "All mandatory regression tests pass", "grader_ids": ["pytest"], "mandatory": true}
+  ],
+  "graders": [
+    {"id": "pytest", "argv": ["python", "-m", "pytest", "tests"], "timeout_seconds": 300, "required": true}
+  ],
+  "omitted_checks": ["Deployment and production smoke tests are not run locally"]
+}

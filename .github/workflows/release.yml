@@ -1,0 +1,25 @@
+name: Release validation
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python plugins/1000x-engineer/skills/1000x-engineer/scripts/validate_skill.py plugins/1000x-engineer/skills/1000x-engineer
+      - run: python scripts/validate_plugin.py plugins/1000x-engineer
+      - run: tar -czf 1000x-engineer-${GITHUB_REF_NAME}.tar.gz plugins/1000x-engineer README.md CHANGELOG.md SECURITY.md CONTRIBUTING.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 1000x-engineer-${{ github.ref_name }}
+          path: 1000x-engineer-${{ github.ref_name }}.tar.gz
